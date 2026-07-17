@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install --yes portaudio19-dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Verify lockfile
+        run: uv lock --check
+
+      - name: Validate public release tree
+        run: |
+          if git ls-files | grep -E '(^|/)(data/|\.streamlit/|\.mentat_history$)|\.(db|sqlite3?|log|pem|key|p8)$'; then
+            echo "Tracked runtime, credential, or personal-data artifact found"
+            exit 1
+          fi
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -v '^\.env\.example$'; then
+            echo "Tracked environment file found"
+            exit 1
+          fi
+          if git grep -I -n -E 'BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}' -- ':!uv.lock'; then
+            echo "Possible credential material found"
+            exit 1
+          fi
+
+      - name: Install project
+        run: uv sync --locked --group dev --extra voice
+
+      - name: Run tests
+        run: uv run --group dev pytest
+
+      - name: Build source release
+        run: uv build --sdist
+
+      - name: Reject local cache files in source release
+        run: |
+          if tar -tzf dist/mentat-*.tar.gz | grep -q '/.uv_cache/'; then
+            echo "Source release contains .uv_cache"
+            exit 1
+          fi

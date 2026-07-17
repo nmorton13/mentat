@@ -1,0 +1,45 @@
+{
+  "default_model": "x-ai/grok-4.1-fast",
+  "models": [
+    {
+      "id": "x-ai/grok-4.1-fast",
+      "label": "grok-4.1-fast",
+      "reasoning": true
+    },
+    {
+      "id": "minimax/minimax-m2.1",
+      "label": "minimax-m2.1",
+      "reasoning": false
+    },
+    {
+      "id": "minimax/minimax-m2.5",
+      "label": "minimax-m2.5",
+      "reasoning": false
+    },
+    {
+      "id": "z-ai/glm-4.7",
+      "label": "glm-4.7",
+      "reasoning": false
+    },
+    {
+      "id": "openai/gpt-chat-latest",
+      "label": "gpt-5.5-instant",
+      "reasoning": true
+    },
+    {
+      "id": "anthropic/claude-opus-4.5",
+      "label": "claude-opus-4.5",
+      "reasoning": false
+    },
+    {
+      "id": "anthropic/claude-sonnet-4.5",
+      "label": "claude-sonnet-4.5",
+      "reasoning": false
+    },
+    {
+      "id": "x-ai/grok-4.3",
+      "label": "grok-4.3",
+      "reasoning": false
+    }
+  ]
+}

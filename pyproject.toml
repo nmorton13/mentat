@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mentat"
+version = "0.8.0"
+description = "Opinionated memory system for selective thought capture and reflection"
+authors = [{name = "nmorton", email = "nathan.morton+mentat@gmail.com"}]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+keywords = ["memory", "notes", "reflection", "knowledge-management", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: News/Diary",
+]
+dependencies = [
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "numpy>=1.24.0",
+    "pandas>=1.5.0",
+    "scipy>=1.10.0",
+    "rich>=13.0.0",
+    "prompt-toolkit>=3.0.0",
+    "sentence-transformers>=2.2.0",
+]
+
+[project.scripts]
+mentat = "mentat.cli.mentat:main"
+
+[project.urls]
+Homepage = "https://github.com/nmorton13/mentat"
+Repository = "https://github.com/nmorton13/mentat"
+Issues = "https://github.com/nmorton13/mentat/issues"
+
+[dependency-groups]
+dev = [
+    "pylint>=4.0.0",
+    "pytest>=8.0.0",
+]
+
+[tool.uv]
+default-groups = []
+
+[tool.hatch.build]
+exclude = [
+    "/.claude",
+    "/.pytest_cache",
+    "/.uv_cache",
+    "/.venv",
+    "/data",
+    "/mentat/concepts/CLAUDE.md",
+    "/tmp",
+    "*.log",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/.env.example",
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/README.md",
+    "/SECURITY.md",
+    "/config",
+    "/docs",
+    "/mentat",
+    "/mentat.py",
+    "/pyproject.toml",
+    "/tests",
+    "/uv.lock",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mentat"]
+
+[project.optional-dependencies]
+voice = [
+    "pyaudio>=0.2.11",
+    "websockets>=15.0.1",
+]
