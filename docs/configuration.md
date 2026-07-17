@@ -32,7 +32,7 @@ Mentat uses OpenRouter for most hosted LLM chat/capture flows. Semantic embeddin
 
 ```env
 MENTAT_USER_ID=mentat
-OPENROUTER_MODEL=x-ai/grok-4.1-fast
+OPENROUTER_MODEL=x-ai/grok-4.5
 ONLINE_MODEL=openai/gpt-chat-latest
 MODEL_CONFIG_PATH=config/models.json
 ```
@@ -96,8 +96,8 @@ Common `/model` forms:
 
 ```bash
 /model 1                              # saved model number -> OpenRouter route
-/model grok-4.1-fast                  # saved label -> OpenRouter route
-/model openrouter x-ai/grok-4.1-fast  # pasted OpenRouter model id
+/model grok-4.5                       # saved label -> OpenRouter route
+/model openrouter x-ai/grok-4.5       # pasted OpenRouter model id
 /model local                          # configured local route/model
 /model local qwen-local               # configured local endpoint with explicit model
 /model ollama                         # configured native Ollama route/model
@@ -109,7 +109,7 @@ The active route is saved in `data/runtime_settings.json`:
 ```json
 {
   "chat_provider": "openrouter",
-  "current_model": "x-ai/grok-4.1-fast"
+  "current_model": "x-ai/grok-4.5"
 }
 ```
 

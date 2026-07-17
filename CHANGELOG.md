@@ -2,6 +2,14 @@
 
 All notable changes to Mentat are documented here.
 
+## 0.8.1 - 2026-07-17
+
+### Changed
+
+- Restored the MENTAT acronym in the interactive CLI banner.
+- Refreshed the curated OpenRouter model list and default against the live
+  catalog.
+
 ## 0.8.0 - 2026-07-12
 
 ### Added

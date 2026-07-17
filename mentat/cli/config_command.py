@@ -255,7 +255,7 @@ def _effective_route(values: Mapping[str, str], env_path: Path) -> tuple[str, st
         )
     return (
         "openrouter",
-        runtime_model or values.get("OPENROUTER_MODEL") or "x-ai/grok-4.1-fast",
+        runtime_model or values.get("OPENROUTER_MODEL") or "x-ai/grok-4.5",
         "https://openrouter.ai/api/v1",
     )
 
@@ -311,7 +311,7 @@ def run_init(
         api_key = _secret("OpenRouter API key", values.get("OPENROUTER_API_KEY", ""), secret_fn)
         model = _ask(
             "OpenRouter model",
-            values.get("OPENROUTER_MODEL") or (current_model if current_provider == "openrouter" else "x-ai/grok-4.1-fast"),
+            values.get("OPENROUTER_MODEL") or (current_model if current_provider == "openrouter" else "x-ai/grok-4.5"),
             input_fn,
         )
         updates.update({"OPENROUTER_API_KEY": api_key, "OPENROUTER_MODEL": model})

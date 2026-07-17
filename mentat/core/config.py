@@ -17,7 +17,7 @@ Create a .env file with these popular settings:
     OPENAI_API_KEY=your_openai_key_here
     
     # MODEL SELECTION (pick one from AVAILABLE_MODELS below)
-    OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+    OPENROUTER_MODEL=x-ai/grok-4.5
     # Optional: route normal chat/capture/summaries to a local/OpenAI-compatible server
     CHAT_BASE_URL=http://localhost:1234/v1
     CHAT_API_KEY=local
@@ -118,10 +118,10 @@ MODEL_CONFIG = _load_model_config()
 
 # Default OpenRouter model - this is the fallback if no environment variable is set
 # You can change this to any model from AVAILABLE_MODELS below
-DEFAULT_OPENROUTER_MODEL = MODEL_CONFIG.get("default_model", "x-ai/grok-4.1-fast")
+DEFAULT_OPENROUTER_MODEL = MODEL_CONFIG.get("default_model", "x-ai/grok-4.5")
 
 # Get model from environment or use default
-# Set in .env as: OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+# Set in .env as: OPENROUTER_MODEL=x-ai/grok-4.5
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL)
 
 # Optional OpenAI-compatible endpoint for normal chat/capture/summary calls.
@@ -164,20 +164,24 @@ AVAILABLE_MODELS, MODEL_METADATA = _build_model_registry(MODEL_CONFIG)
 if not AVAILABLE_MODELS:
     print("Warning: No curated models found, using fallback list")
     AVAILABLE_MODELS = {
-        "grok-4.1-fast": "x-ai/grok-4.1-fast",
-        "minimax-m2.1": "minimax/minimax-m2.1",
-        "glm-4.7": "z-ai/glm-4.7",
-        "gpt-5.2-chat": "openai/gpt-5.2-chat",
-        "claude-opus-4.5": "anthropic/claude-opus-4.5",
-        "claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
+        "grok-4.5": "x-ai/grok-4.5",
+        "gpt-5.6-terra": "openai/gpt-5.6-terra",
+        "gpt-chat-latest": "openai/gpt-chat-latest",
+        "claude-sonnet-5": "anthropic/claude-sonnet-5",
+        "claude-opus-4.8": "anthropic/claude-opus-4.8",
+        "gemini-3.5-flash": "google/gemini-3.5-flash",
+        "minimax-m3": "minimax/minimax-m3",
+        "glm-5.2": "z-ai/glm-5.2",
     }
     MODEL_METADATA = {
-        "x-ai/grok-4.1-fast": {"label": "grok-4.1-fast", "reasoning": True},
-        "minimax/minimax-m2.1": {"label": "minimax-m2.1", "reasoning": False},
-        "z-ai/glm-4.7": {"label": "glm-4.7", "reasoning": False},
-        "openai/gpt-5.2-chat": {"label": "gpt-5.2-chat", "reasoning": True},
-        "anthropic/claude-opus-4.5": {"label": "claude-opus-4.5", "reasoning": False},
-        "anthropic/claude-sonnet-4.5": {"label": "claude-sonnet-4.5", "reasoning": False},
+        "x-ai/grok-4.5": {"label": "grok-4.5", "reasoning": True},
+        "openai/gpt-5.6-terra": {"label": "gpt-5.6-terra", "reasoning": True},
+        "openai/gpt-chat-latest": {"label": "gpt-chat-latest", "reasoning": False},
+        "anthropic/claude-sonnet-5": {"label": "claude-sonnet-5", "reasoning": True},
+        "anthropic/claude-opus-4.8": {"label": "claude-opus-4.8", "reasoning": True},
+        "google/gemini-3.5-flash": {"label": "gemini-3.5-flash", "reasoning": True},
+        "minimax/minimax-m3": {"label": "minimax-m3", "reasoning": True},
+        "z-ai/glm-5.2": {"label": "glm-5.2", "reasoning": True},
     }
 
 # =============================================================================

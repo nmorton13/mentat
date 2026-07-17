@@ -518,13 +518,13 @@ you want it to become part of normal memory context.
 **Examples:**
 ```bash
 /model                                      # Show current route, model, endpoint, and available options
-/model gpt-5.2-chat                         # Switch saved model by label; routes chat through OpenRouter
+/model gpt-5.6-terra                        # Switch saved model by label; routes chat through OpenRouter
 /model 3                                    # Switch using number from config/models.json; routes chat through OpenRouter
 /model local                                # Switch chat to configured local/LM Studio route and model
 /model local google/gemma-4-12b-qat         # Switch chat to local endpoint with explicit model string
 /model ollama                               # Switch chat to configured native Ollama route and model
 /model ollama llama3.2                      # Switch chat to native Ollama with explicit model string
-/model openrouter x-ai/grok-4.1-fast        # Switch chat to exact pasted OpenRouter model id
+/model openrouter x-ai/grok-4.5             # Switch chat to exact pasted OpenRouter model id
 ```
 
 **Model list source and persistence:**

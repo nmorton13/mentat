@@ -2,6 +2,7 @@ import json
 import types
 
 from mentat.core import ai
+from mentat.core import config
 
 
 class DummyResponse:
@@ -22,7 +23,9 @@ class DummyClient:
         self.chat = types.SimpleNamespace(completions=DummyCompletions(content))
 
 
-def test_extract_structured_entities_with_client():
+def test_extract_structured_entities_with_client(monkeypatch):
+    monkeypatch.setattr(config, "ENTITY_EXTRACTION_PROVIDER", "chat")
+    monkeypatch.setattr(config, "ENTITY_EXTRACTION_MODEL", None)
     payload = {
         "people": ["Ada"],
         "organizations": ["OpenAI"],
@@ -40,7 +43,9 @@ def test_extract_structured_entities_with_client():
     assert entities["projects"] == ["MENTAT"]
 
 
-def test_extract_structured_entities_without_client():
+def test_extract_structured_entities_without_client(monkeypatch):
+    monkeypatch.setattr(config, "ENTITY_EXTRACTION_PROVIDER", "chat")
+    monkeypatch.setattr(config, "ENTITY_EXTRACTION_MODEL", None)
     entities = ai.extract_structured_entities("No client provided")
 
     assert entities["people"] == []

@@ -11,11 +11,11 @@ def _load_config(monkeypatch, tmp_path, clear_online_model=True, clear_chat_prov
     model_config.write_text(
         json.dumps(
             {
-                "default_model": "x-ai/grok-4.1-fast",
+                "default_model": "x-ai/grok-4.5",
                 "models": [
-                    {"id": "x-ai/grok-4.1-fast", "label": "grok", "reasoning": True},
-                    {"id": "openai/gpt-5.2-chat", "label": "gpt-5", "reasoning": True},
-                    {"id": "anthropic/claude-opus-4.5", "label": "opus", "reasoning": False},
+                    {"id": "x-ai/grok-4.5", "label": "grok", "reasoning": True},
+                    {"id": "openai/gpt-5.6-terra", "label": "gpt-5", "reasoning": True},
+                    {"id": "openai/gpt-chat-latest", "label": "gpt-chat", "reasoning": False},
                 ],
             }
         )
@@ -23,7 +23,7 @@ def _load_config(monkeypatch, tmp_path, clear_online_model=True, clear_chat_prov
     monkeypatch.setenv("MODEL_CONFIG_PATH", str(model_config))
     monkeypatch.setenv("RUNTIME_SETTINGS_PATH", str(runtime_settings))
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
-    monkeypatch.setenv("OPENROUTER_MODEL", "x-ai/grok-4.1-fast")
+    monkeypatch.setenv("OPENROUTER_MODEL", "x-ai/grok-4.5")
     if clear_chat_provider:
         monkeypatch.setenv("CHAT_BASE_URL", "")
         monkeypatch.setenv("CHAT_API_KEY", "")
@@ -58,12 +58,12 @@ def _load_config(monkeypatch, tmp_path, clear_online_model=True, clear_chat_prov
 def test_runtime_model_roundtrip(monkeypatch, tmp_path):
     config, runtime_settings = _load_config(monkeypatch, tmp_path)
 
-    assert config.get_current_model() == "x-ai/grok-4.1-fast"
-    assert config.set_current_model("openai/gpt-5.2-chat") is True
-    assert config.get_current_model() == "openai/gpt-5.2-chat"
+    assert config.get_current_model() == "x-ai/grok-4.5"
+    assert config.set_current_model("openai/gpt-5.6-terra") is True
+    assert config.get_current_model() == "openai/gpt-5.6-terra"
 
     data = json.loads(runtime_settings.read_text())
-    assert data["current_model"] == "openai/gpt-5.2-chat"
+    assert data["current_model"] == "openai/gpt-5.6-terra"
 
 
 def test_online_model_loads_independently_from_current_model(monkeypatch, tmp_path):
@@ -74,14 +74,14 @@ def test_online_model_loads_independently_from_current_model(monkeypatch, tmp_pa
     config, _runtime_settings = _load_config(monkeypatch, tmp_path, clear_online_model=False)
 
     assert config.ONLINE_MODEL == "openai/gpt-chat-latest"
-    assert config.get_current_model() == "x-ai/grok-4.1-fast"
+    assert config.get_current_model() == "x-ai/grok-4.5"
 
 
 def test_chat_provider_settings_are_optional_and_override_normal_model(monkeypatch, tmp_path):
     config, _runtime_settings = _load_config(monkeypatch, tmp_path)
     assert config.get_chat_base_url() == config.OPENROUTER_BASE_URL
     assert config.get_chat_api_key() is None
-    assert config.get_current_model() == "x-ai/grok-4.1-fast"
+    assert config.get_current_model() == "x-ai/grok-4.5"
 
     monkeypatch.setenv("CHAT_BASE_URL", "http://localhost:1234/v1")
     monkeypatch.setenv("CHAT_MODEL", "qwen-local")
@@ -136,21 +136,34 @@ def test_helpers_defaults_apply_to_task_routes_and_specific_overrides(monkeypatc
 def test_reasoning_settings(monkeypatch, tmp_path):
     config, _runtime_settings = _load_config(monkeypatch, tmp_path)
 
-    assert config.model_supports_reasoning("x-ai/grok-4.1-fast") is True
-    assert config.model_supports_reasoning("anthropic/claude-opus-4.5") is False
+    assert config.model_supports_reasoning("x-ai/grok-4.5") is True
+    assert config.model_supports_reasoning("openai/gpt-chat-latest") is False
 
     assert config.get_reasoning_effort() == "minimal"
-    assert config.get_reasoning_extra_body("x-ai/grok-4.1-fast") == {
+    assert config.get_reasoning_extra_body("x-ai/grok-4.5") == {
         "reasoning": {"effort": "minimal"}
     }
 
     assert config.set_reasoning_effort("low") is True
-    assert config.get_reasoning_extra_body("openai/gpt-5.2-chat") == {
+    assert config.get_reasoning_extra_body("openai/gpt-5.6-terra") == {
         "reasoning": {"effort": "low"}
     }
 
     assert config.set_reasoning_effort("off") is True
-    assert config.get_reasoning_extra_body("openai/gpt-5.2-chat") is None
+    assert config.get_reasoning_extra_body("openai/gpt-5.6-terra") is None
+
+
+def test_curated_model_config_is_self_consistent():
+    model_config = Path(__file__).resolve().parents[1] / "config" / "models.json"
+    data = json.loads(model_config.read_text(encoding="utf-8"))
+    models = data["models"]
+    model_ids = [model["id"] for model in models]
+    labels = [model["label"] for model in models]
+
+    assert data["default_model"] in model_ids
+    assert len(model_ids) == len(set(model_ids))
+    assert len(labels) == len(set(labels))
+    assert all(isinstance(model["reasoning"], bool) for model in models)
 
 
 def test_runtime_paths_resolve_from_project_root(monkeypatch, tmp_path):

@@ -524,15 +524,15 @@ def test_main_dispatches_model(monkeypatch):
     monkeypatch.setattr(mentat, "openrouter_client", object())
     monkeypatch.setattr(mentat, "handle_model_command", fake_model)
 
-    run_main_with_args(monkeypatch, ["model", "gpt-5.5-instant"])
+    run_main_with_args(monkeypatch, ["model", "grok-4.5"])
 
-    assert captured == {"arg": "gpt-5.5-instant"}
+    assert captured == {"arg": "grok-4.5"}
 
 
 def test_model_command_switches_current_model_without_online_model(monkeypatch):
     saved = []
     routes = []
-    monkeypatch.setattr(mentat, "AVAILABLE_MODELS", {"gpt-5": "openai/gpt-5.2-chat"})
+    monkeypatch.setattr(mentat, "AVAILABLE_MODELS", {"gpt-5": "openai/gpt-5.6-terra"})
     monkeypatch.setattr(mentat, "current_model", "qwen-local")
     monkeypatch.setattr(mentat, "set_chat_route", lambda provider, model: routes.append((provider, model)) or True)
     monkeypatch.setattr(mentat, "set_current_model", lambda model: saved.append(model) or True)
@@ -542,15 +542,15 @@ def test_model_command_switches_current_model_without_online_model(monkeypatch):
 
     mentat.handle_model_command("gpt-5")
 
-    assert mentat.current_model == "openai/gpt-5.2-chat"
-    assert routes == [("openrouter", "openai/gpt-5.2-chat")]
-    assert saved == ["openai/gpt-5.2-chat"]
+    assert mentat.current_model == "openai/gpt-5.6-terra"
+    assert routes == [("openrouter", "openai/gpt-5.6-terra")]
+    assert saved == ["openai/gpt-5.6-terra"]
 
 
 def test_model_command_accepts_custom_model_when_config_allows(monkeypatch):
     saved = []
-    monkeypatch.setattr(mentat, "AVAILABLE_MODELS", {"gpt-5": "openai/gpt-5.2-chat"})
-    monkeypatch.setattr(mentat, "current_model", "openai/gpt-5.2-chat")
+    monkeypatch.setattr(mentat, "AVAILABLE_MODELS", {"gpt-5": "openai/gpt-5.6-terra"})
+    monkeypatch.setattr(mentat, "current_model", "openai/gpt-5.6-terra")
     monkeypatch.setattr(mentat, "set_current_model", lambda model: saved.append(model) or True)
     monkeypatch.setattr(mentat, "display_models_table", lambda current_model: None)
     monkeypatch.setattr(mentat.console, "print", lambda *args, **kwargs: None)
@@ -563,7 +563,7 @@ def test_model_command_accepts_custom_model_when_config_allows(monkeypatch):
 
 def test_model_command_saved_model_selects_openrouter_route(monkeypatch):
     routes = []
-    monkeypatch.setattr(mentat, "AVAILABLE_MODELS", {"grok": "x-ai/grok-4.1-fast"})
+    monkeypatch.setattr(mentat, "AVAILABLE_MODELS", {"grok": "x-ai/grok-4.5"})
     monkeypatch.setattr(mentat, "set_chat_route", lambda provider, model: routes.append((provider, model)) or True)
     monkeypatch.setattr(mentat, "set_current_model", lambda model: True)
     monkeypatch.setattr(mentat, "build_chat_client", lambda: "new-chat-client")
@@ -573,8 +573,8 @@ def test_model_command_saved_model_selects_openrouter_route(monkeypatch):
 
     mentat.handle_model_command("grok")
 
-    assert routes == [("openrouter", "x-ai/grok-4.1-fast")]
-    assert mentat.current_model == "x-ai/grok-4.1-fast"
+    assert routes == [("openrouter", "x-ai/grok-4.5")]
+    assert mentat.current_model == "x-ai/grok-4.5"
     assert mentat.openrouter_client == "new-chat-client"
 
 
@@ -738,7 +738,7 @@ def test_handle_save_response_stores_ai_response_command_type(monkeypatch):
 
     commands.handle_save_response(
         user_id="u1",
-        current_model="z-ai/glm-4.7",
+        current_model="z-ai/glm-5.2",
         openrouter_client=None,
         openai_client=None,
         db=DummyDB(),
@@ -755,7 +755,7 @@ def test_handle_save_response_stores_ai_response_command_type(monkeypatch):
     assert captured["tags"] == ["ai_response"]
     source_info = captured["metadata"]["source"]
     assert source_info["type"] == "ai_response"
-    assert source_info["model"] == "z-ai/glm-4.7"
+    assert source_info["model"] == "z-ai/glm-5.2"
     assert source_info["command"] == "chat"
     assert source_info["prompt"] == "What should I think about this?"
 

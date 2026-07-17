@@ -310,7 +310,7 @@ def print_banner():
 [bold cyan]██║ ╚═╝ ██║███████╗██║ ╚████║   ██║   ██║  ██║   ██║   [/bold cyan]
 [bold cyan]╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝   ╚═╝   [/bold cyan]
 
-[bold yellow]Opinionated memory for thoughts that keep tugging[/bold yellow]
+[bold yellow]Mental Enhancement Node for Thought Analysis and Transformation[/bold yellow]
 [dim]Selective capture, search, reflection, and connection[/dim]
 """
     

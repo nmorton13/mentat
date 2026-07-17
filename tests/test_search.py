@@ -49,7 +49,7 @@ def test_saved_ai_response_is_searchable_but_not_latest(monkeypatch, tmp_path):
 
     commands.handle_save_response(
         user_id="u1",
-        current_model="z-ai/glm-4.7",
+        current_model="z-ai/glm-5.2",
         openrouter_client=None,
         openai_client=None,
         db=db,

@@ -100,7 +100,7 @@ def test_markdown_ai_response_includes_source_details(markdown_export_path):
     metadata = {
         "source": {
             "type": "ai_response",
-            "model": "z-ai/glm-4.7",
+            "model": "z-ai/glm-5.2",
             "command": "chat",
             "context": "chat_response",
             "timestamp": timestamp,
@@ -124,7 +124,7 @@ def test_markdown_ai_response_includes_source_details(markdown_export_path):
     assert "**16:45** 🤖" in content
     assert "🤖 **AI Response:**" in content
     assert "**Prompt:**\nDoes Beautiful Mess clash with First Principle thinking?\n\n**Response:**\nThis was an AI reply worth saving." in content
-    assert "Model: `z-ai/glm-4.7`" in content
+    assert "Model: `z-ai/glm-5.2`" in content
     assert "Command: `/chat`" in content
     assert "Context: `chat_response`" in content
     assert "Saved: 2025-12-31 16:45" in content
