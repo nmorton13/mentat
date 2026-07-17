@@ -59,6 +59,10 @@ cd mentat
 uv sync
 ```
 
+On the first capture or semantic search, Mentat downloads its local embedding
+model from Hugging Face and caches it for subsequent use. See the
+[installation guide](docs/installation.md) for details.
+
 Run the guided setup:
 
 ```bash

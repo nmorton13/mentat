@@ -50,6 +50,14 @@ uv python install 3.12
 uv sync --python 3.12
 ```
 
+The local embedding model weights are not included in `uv sync`. The first time
+Mentat needs an embedding, such as during a capture or semantic search,
+`sentence-transformers` downloads the configured model from the
+[Hugging Face Hub](https://huggingface.co/sentence-transformers/all-mpnet-base-v2).
+The default is `sentence-transformers/all-mpnet-base-v2`. This initial download
+requires an internet connection; afterward, the model is loaded from the local
+Hugging Face cache (normally `~/.cache/huggingface/hub`).
+
 ## Configure And Run
 
 Run the guided configuration flow:
