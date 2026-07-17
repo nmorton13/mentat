@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mentat"
-version = "0.8.1"
+version = "0.8.2"
 description = "Opinionated memory system for selective thought capture and reflection"
 authors = [{name = "nmorton", email = "nathan.morton+mentat@gmail.com"}]
 license = "MIT"

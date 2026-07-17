@@ -2,6 +2,18 @@
 
 All notable changes to Mentat are documented here.
 
+## 0.8.2 - 2026-07-17
+
+### Changed
+
+- Documented how Mentat becomes more useful as its selected memory grows and
+  added a review-first workflow for existing Markdown, Obsidian, and text notes.
+
+### Fixed
+
+- Prevented the `/mark` notation in interactive help from enabling
+  strikethrough formatting on the commands that followed it.
+
 ## 0.8.1 - 2026-07-17
 
 ### Changed
