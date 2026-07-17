@@ -119,6 +119,30 @@ openrouter_client = build_chat_client()
 # Get current model from centralized config
 current_model = get_current_model()
 
+HELP_TEXT = """
+[bold]Available Commands:[/bold]
+• [cyan]/capture <text>[/cyan] - Capture and analyze content (use /capture alone for multi-line mode)
+• [cyan]/capture --web-search <text>[/cyan] - Capture with web context enrichment (use -w for short)
+• [cyan]/search <query>[/cyan] - Search your memories
+• [cyan]/search ai response[/cyan] - Show saved AI responses
+• [cyan]/links [term][/cyan] - Show saved links | [cyan]/link <url> [comment][/cyan] - Save a link
+• [cyan]/latest[/cyan] - Show recent content
+• [cyan]/summary [days][/cyan] - Generate summary
+• [cyan]/project <name>[/cyan] - Analyze project
+• [cyan]/tag <tags>[/cyan] - Search by tags
+• [cyan]/todo [search|done][/cyan] - Show todos (completed hidden by default)
+• [cyan]/mark <number(s)>[/cyan] - Toggle todo(s) done/pending (e.g., /mark 3 or /mark 10, 13, 24)
+• [cyan]/synthesize <topic>[/cyan] - Synthesize notes
+• [cyan]/chat <query>[/cyan] - Chat with AI
+• [cyan]/voice[/cyan] - Start a voice chat session
+• [cyan]/explore <concept|number>[/cyan] - Deep concept exploration with knowledge gaps analysis
+• [cyan]/connect "concept1" "concept2"[/cyan] - Analyze concept relationships (use quotes for multi-word)
+• [cyan]/model [model][/cyan] - Change AI model
+• [cyan]/view <number>[/cyan] - View full content from last results
+• [cyan]/help[/cyan] - Show this help
+• [cyan]/exit[/cyan] - Quit
+"""
+
 # Global storage for /view command
 last_displayed_items = []
 # Global reference to enhanced chat system for reference lookups
@@ -733,30 +757,7 @@ def interactive_mode(user_id):
                     last_displayed_items = []
 
                 if cmd == "help":
-                    help_text = """
-[bold]Available Commands:[/bold]
-• [cyan]/capture <text>[/cyan] - Capture and analyze content (use /capture alone for multi-line mode)
-• [cyan]/capture --web-search <text>[/cyan] - Capture with web context enrichment (use -w for short)
-• [cyan]/search <query>[/cyan] - Search your memories
-• [cyan]/search ai response[/cyan] - Show saved AI responses
-• [cyan]/links [term][/cyan] - Show saved links | [cyan]/link <url> [comment][/cyan] - Save a link
-• [cyan]/latest[/cyan] - Show recent content
-• [cyan]/summary [days][/cyan] - Generate summary
-• [cyan]/project <name>[/cyan] - Analyze project
-• [cyan]/tag <tags>[/cyan] - Search by tags
-• [cyan]/todo [search|done][/cyan] - Show todos (completed hidden by default)
-• [cyan]/mark <number>[s][/cyan] - Toggle todo(s) done/pending (e.g., /mark 3 or /mark 10, 13, 24)
-• [cyan]/synthesize <topic>[/cyan] - Synthesize notes
-• [cyan]/chat <query>[/cyan] - Chat with AI
-• [cyan]/voice[/cyan] - Start a voice chat session
-• [cyan]/explore <concept|number>[/cyan] - Deep concept exploration with knowledge gaps analysis
-• [cyan]/connect "concept1" "concept2"[/cyan] - Analyze concept relationships (use quotes for multi-word)
-• [cyan]/model [model][/cyan] - Change AI model
-• [cyan]/view <number>[/cyan] - View full content from last results
-• [cyan]/help[/cyan] - Show this help
-• [cyan]/exit[/cyan] - Quit
-                    """
-                    help_panel = create_standard_panel(help_text, "📚 Help", None, "bright_blue")
+                    help_panel = create_standard_panel(HELP_TEXT, "📚 Help", None, "bright_blue")
                     console.print(help_panel)
                     
                 elif cmd == "voice":
@@ -977,7 +978,7 @@ def interactive_mode(user_id):
                 elif cmd == "mark":
                     chat_history = []
                     if not arg:
-                        console.print("[red]❌ Usage: /mark <number>[s][/red]")
+                        console.print("[red]❌ Usage: /mark <number(s)>[/red]")
                         console.print("[dim]Examples:[/dim]")
                         console.print("[dim]  /mark 3           - Mark a single todo[/dim]")
                         console.print("[dim]  /mark 10, 13, 24 - Mark multiple todos[/dim]")

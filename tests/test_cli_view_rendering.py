@@ -1,4 +1,12 @@
 from mentat.cli import mentat
+from rich.text import Text
+
+
+def test_help_text_does_not_enable_strikethrough():
+    rendered = Text.from_markup(mentat.HELP_TEXT)
+
+    assert all(str(span.style) not in {"s", "strike"} for span in rendered.spans)
+    assert "/mark <number(s)>" in rendered.plain
 
 
 def test_build_view_panel_link_uses_markdown_renderer(monkeypatch):
