@@ -26,6 +26,21 @@ Use Mentat for ideas with some gravity: thoughts that survive the noise, keep sh
 work later. Skip the disposable stuff. Mentat is intentionally more selective than a life logger and more opinionated
 than a generic notes folder.
 
+## Mentat Gets Better Over Time
+
+Mentat starts quiet. Its search, chat, synthesis, and connections become more
+useful as you build a deliberate record and return to it over time. You do not
+need hundreds of memories before starting, but the first few captures are seeds,
+not a complete picture of your thinking.
+
+If you already have useful material in Markdown files, an Obsidian vault, text
+notes, journals, or exported conversations, an agent with access to those files
+and the Mentat CLI can help you review it and capture the parts that still
+matter. The goal is not to import everything. It is to recover the ideas,
+questions, decisions, and recurring themes that deserve a place in your active
+memory. See [Starting With Existing Notes](docs/examples.md#starting-with-existing-notes)
+for a review-first workflow.
+
 ## Core Features
 
 - AI-assisted `/capture` with entity, theme, tag, and action-item extraction

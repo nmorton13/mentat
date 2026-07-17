@@ -37,6 +37,42 @@ Usually skip routine exhaust:
 The boundary is personal. The useful test is not "could I save this?" but "is
 there a reason I may want to meet this thought again?"
 
+## Starting With Existing Notes
+
+You do not have to begin from an empty history. If you already have Markdown
+files, an Obsidian vault, text notes, journals, or exported conversations, an
+agent with access to those files and the Mentat CLI can help you identify the
+material that still belongs in your active memory.
+
+Start with review rather than automatic capture. Ask the agent to show you a
+small set of candidates, preserve your wording where possible, identify the
+source file, and avoid duplicates. After you approve the candidates, the agent
+can pass them individually to `mentat capture`.
+
+For example:
+
+```text
+Review these Markdown notes and identify thoughts that still seem unresolved,
+recurring, or connected to my current work. Do not capture anything yet. Show
+me the candidates first.
+```
+
+```text
+Review this Obsidian folder one file at a time. Suggest selective Mentat
+captures rather than importing every note. Preserve my wording and include the
+source filename in each suggestion.
+```
+
+```text
+Find repeated questions and themes across these old text files. Prepare a small
+set of standalone memories for my review, then capture only the ones I approve.
+```
+
+This can give Mentat a useful starting context without turning it into a dump of
+everything you have written. Its value comes from returning to a selected
+record and noticing what persists, changes, or connects—not from maximizing the
+number of memories.
+
 ## Return After A Few Days
 
 Mentat becomes useful in the return, not in the volume of capture.
