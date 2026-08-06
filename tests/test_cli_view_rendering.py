@@ -7,6 +7,7 @@ def test_help_text_does_not_enable_strikethrough():
 
     assert all(str(span.style) not in {"s", "strike"} for span in rendered.spans)
     assert "/mark <number(s)>" in rendered.plain
+    assert "/reflection" in rendered.plain
 
 
 def test_build_view_panel_link_uses_markdown_renderer(monkeypatch):

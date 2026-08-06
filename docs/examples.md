@@ -247,6 +247,29 @@ uv run mentat chat "how do my notes connect learning fundamentals with constrain
 is a synthesis of the memories you chose to preserve, not a complete account of
 your life and not a set of beliefs held by Mentat itself.
 
+## Ask For Constructive Reflection
+
+Use `/chat` when you want to choose the question or angle. Use `/synthesize`
+when you want related notes combined around a topic. Use `/reflection` when you
+want MENTAT to choose one difficult but constructive pattern that the saved
+record can responsibly support.
+
+```bash
+/reflection
+```
+
+Reflection takes no topic or other arguments. It samples across the available
+timeline and content types instead of retrieving memories similar to a question
+you supplied. The answer gives one central interpretation, supporting evidence,
+counterevidence, the possible cost, and one practical test. It may challenge a
+preferred explanation, but it is instructed not to diagnose, shame, catastrophize,
+or manufacture criticism merely to sound bold.
+
+The active `/model` selection controls where the reflection runs. A hosted route
+receives the selected memory excerpts; use a local or Ollama route when those
+memories should remain on your machine. The answer is shown once and is not
+saved to MENTAT or written to a file.
+
 ## AI Responses As References
 
 `/save` can keep an especially useful AI response, but saved AI output remains a
@@ -276,6 +299,9 @@ your thinking. That new note can then become part of normal memory context.
 /search morning walk
 /synthesize attention light and solitude
 
+# Ask MENTAT to choose one difficult but constructive pattern to examine
+/reflection
+
 # Revisit learning across different subjects
 /chat where have I wanted to move from conceptual understanding to direct practice?
 ```
@@ -285,5 +311,5 @@ your thinking. That new note can then become part of normal memory context.
 1. Capture sparingly when a thought has consequence, recurrence, or unresolved energy.
 2. Include why a source, event, or passing observation matters to you.
 3. Let tags, entities, and connections emerge after capture.
-4. Return after enough time has passed for recurrence and contrast to become visible.
+4. Return after enough time has passed for recurrence and contrast to become visible; use `/reflection` when you want MENTAT to choose the angle rather than supplying one through `/chat`.
 5. Treat Mentat's answers as analysis of the memories you selected, never as a complete account of your life.

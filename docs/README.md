@@ -1,7 +1,8 @@
 # Mentat Documentation
 
 This documentation describes the core Mentat app: selective capture, search,
-chat, voice, Journal Markdown and OKF interchange, and tools.
+chat, constructive reflection, voice, Journal Markdown and OKF interchange,
+and tools.
 
 ## Guides
 

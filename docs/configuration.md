@@ -19,7 +19,7 @@ The settings below remain available for advanced routing and direct editing.
 ## Required And Optional Keys
 
 ```env
-# Required for most LLM chat/capture/summary features
+# Required for most hosted LLM chat/capture/summary/reflection features
 OPENROUTER_API_KEY=your_openrouter_key
 
 # Optional: OpenAI-only features such as OpenAI realtime voice or direct OpenAI routing
@@ -29,7 +29,7 @@ OPENAI_API_KEY=your_openai_key
 VENICE_API_KEY=your_venice_key
 ```
 
-Mentat uses OpenRouter for most hosted LLM chat/capture flows. Semantic embeddings are local sentence-transformers by default, so no API key is required for embeddings.
+Mentat uses OpenRouter for most hosted LLM chat/capture/reflection flows. Semantic embeddings are local sentence-transformers by default, so no API key is required for embeddings.
 
 ## User And Models
 
@@ -44,7 +44,7 @@ MODEL_CONFIG_PATH=config/models.json
 `OPENROUTER_MODEL` is the OpenRouter fallback when no runtime route/model has been selected.
 `ONLINE_MODEL` is optional and is only for explicit web-backed/online features that use OpenRouter's `openrouter:web_search` server tool. It does not control normal chat, ConceptExplorer, or entity extraction. Online/web calls always require `OPENROUTER_API_KEY` and route through OpenRouter; they never send OpenRouter web-search tools to a local `CHAT_BASE_URL`. If `ONLINE_MODEL` is unset, Mentat uses the active chat model when chat is already routed through OpenRouter, or `OPENROUTER_MODEL` when normal chat is local/custom.
 
-To route normal chat/capture/summaries to a local or OpenAI-compatible server, set the optional `CHAT_*` values:
+To route normal chat/capture/summaries/reflection to a local or OpenAI-compatible server, set the optional `CHAT_*` values:
 
 ```env
 CHAT_BASE_URL=http://localhost:1234/v1
@@ -56,6 +56,11 @@ ONLINE_MODEL=openai/gpt-chat-latest
 If `CHAT_*` values are unset, Mentat behaves as before and uses OpenRouter for normal LLM calls. If `CHAT_BASE_URL` is set without `CHAT_API_KEY`, Mentat uses `local` as a harmless placeholder API key for local servers that require the field but do not validate it.
 
 `CHAT_*` values are defaults. Once you use `/model`, the runtime chat route in `data/runtime_settings.json` wins over `.env`: saved model selections route through OpenRouter, and `/model local` routes through the configured local endpoint.
+
+`/reflection` follows this active chat route and model. It has no separate
+provider setting. Hosted routes receive the bounded memory cross-section used
+for the reflection; local and Ollama routes keep that prompt on the configured
+local endpoint.
 
 To route normal chat through native Ollama, use `OLLAMA_*` and `/model ollama [model]`:
 

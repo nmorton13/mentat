@@ -18,7 +18,7 @@ Create a .env file with these popular settings:
     
     # MODEL SELECTION (pick one from AVAILABLE_MODELS below)
     OPENROUTER_MODEL=x-ai/grok-4.5
-    # Optional: route normal chat/capture/summaries to a local/OpenAI-compatible server
+    # Optional: route normal chat/capture/summaries/reflection to a local/OpenAI-compatible server
     CHAT_BASE_URL=http://localhost:1234/v1
     CHAT_API_KEY=local
     CHAT_MODEL=qwen-local
@@ -124,7 +124,7 @@ DEFAULT_OPENROUTER_MODEL = MODEL_CONFIG.get("default_model", "x-ai/grok-4.5")
 # Set in .env as: OPENROUTER_MODEL=x-ai/grok-4.5
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL)
 
-# Optional OpenAI-compatible endpoint for normal chat/capture/summary calls.
+# Optional OpenAI-compatible endpoint for normal chat/capture/summary/reflection calls.
 # Leave these unset to preserve the existing OpenRouter behavior.
 CHAT_BASE_URL = os.getenv("CHAT_BASE_URL", "").strip() or None
 CHAT_API_KEY = os.getenv("CHAT_API_KEY", "").strip() or None
@@ -244,7 +244,7 @@ def get_chat_provider() -> str:
 
 
 def get_chat_base_url() -> str:
-    """Base URL for normal chat/capture/summary LLM calls."""
+    """Base URL for normal chat/capture/summary/reflection LLM calls."""
     provider = get_chat_provider()
     if provider == "openrouter":
         return OPENROUTER_BASE_URL
@@ -370,6 +370,27 @@ def resolve_chat_retrieval_limits(memory_count: int) -> Dict[str, Any]:
         "context_limit": int(
             os.environ.get("CHAT_CONTEXT_LIMIT", min(memory_count, 50))
         ),
+    }
+
+
+def resolve_reflection_corpus_limits(memory_count: int) -> Dict[str, int]:
+    """Resolve automatic, bounded corpus limits for ``/reflection``."""
+    memory_count = max(0, memory_count)
+
+    if memory_count <= 50:
+        memory_limit = memory_count
+    elif memory_count <= 100:
+        memory_limit = 60
+    elif memory_count <= 250:
+        memory_limit = 70
+    elif memory_count <= 500:
+        memory_limit = 80
+    else:
+        memory_limit = 100
+
+    return {
+        "memory_limit": min(memory_count, memory_limit),
+        "max_corpus_chars": 60_000,
     }
 
 # Minimum similarity threshold for semantic search (0.0-1.0)

@@ -2,7 +2,7 @@
 
 An opinionated memory system for thoughts that keep tugging at you.
 
-Mentat is a local-first CLI app for selectively saving thoughts, links, notes, and research, then surfacing them later through hybrid search, semantic connections, temporal queries, and AI-assisted chat.
+Mentat is a local-first CLI app for selectively saving thoughts, links, notes, and research, then returning to them through hybrid search, semantic connections, temporal queries, AI-assisted chat, and constructive reflection across time.
 
 **See Mentat in action:** [Capture, explore, and synthesize from the terminal →](docs/screenshots.md)
 
@@ -30,7 +30,7 @@ than a generic notes folder.
 
 ## Mentat Gets Better Over Time
 
-Mentat starts quiet. Its search, chat, synthesis, and connections become more
+Mentat starts quiet. Its search, chat, synthesis, reflection, and connections become more
 useful as you build a deliberate record and return to it over time. You do not
 need hundreds of memories before starting, but the first few captures are seeds,
 not a complete picture of your thinking.
@@ -50,6 +50,7 @@ for a review-first workflow.
 - Hybrid search across saved memories with keyword, semantic, and entity-aware matching
 - Natural language temporal search such as "what was I thinking about last week?"
 - Context-aware CLI chat over your memory corpus
+- One-shot `/reflection` that identifies one difficult but constructive pattern, tests it against counterevidence, and suggests one practical action
 - Voice sessions through the CLI `/voice` command
 - Journal Markdown v1 export/import for human-readable, Obsidian-friendly archives
 - Open Knowledge Format (OKF) v0.2 export/import for portable knowledge bundles
@@ -115,6 +116,7 @@ Additional ways to work with selected memories:
 - `/delete <number>` - remove a numbered result after confirmation
 - `/model` - inspect/switch chat routes and models (`/model 1`, `/model local`, `/model ollama`, `/model venice`, `/model openrouter <id>`)
 - `/summary [days]` - generate an activity summary
+- `/reflection` - receive one candid, constructive reflection across your saved memories
 - `/synthesize <topic>` - combine related notes into a structured synthesis
 - `/save` - capture a valuable AI response as a memory
 - `/help` - show available commands
@@ -129,6 +131,7 @@ uv run mentat search "machine learning" --json
 uv run mentat links "research" --json
 uv run mentat todo pending --json
 uv run mentat chat "what changed recently?" --json
+uv run mentat reflection
 uv run mentat capture -
 uv run mentat view 123
 uv run mentat delete 123 --yes
@@ -154,14 +157,19 @@ The same agent can query your memories: "What does Mentat think about X?" or
 synthesize the memories you selected; they are not a complete record or Mentat's
 own beliefs.
 
+An agent can also run `mentat reflection` when you explicitly want MENTAT to
+choose one candid, constructive pattern from across your saved record. Reflection
+returns human-readable output and does not save its answer.
+
 ## Local-First And Privacy
 
 Memories, embeddings, runtime settings, and exports are stored locally.
 When you choose OpenRouter, Venice AI, OpenAI, xAI, or another hosted endpoint, the content
 needed for that request is sent to that provider. Chat requests may include
-retrieved memories as context. Use Ollama or another local endpoint for routes
-that should remain on your machine, and inspect effective routing with
-`mentat config show` or `/model`.
+retrieved memories as context. Reflection requests include a bounded,
+cross-timeline selection of personal memories—up to 100 for large corpora—so
+use Ollama or another local endpoint when that material should remain on your
+machine. Inspect effective routing with `mentat config show` or `/model`.
 
 ## Data
 

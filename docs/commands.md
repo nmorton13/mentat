@@ -41,6 +41,13 @@ serializes the result instead of rendering Rich panels. The JSON data includes
 the query, model, response, sources, patterns, connections, suggestions,
 explorable references, and any structured `viewable_items`.
 
+`reflection` is also available as a top-level command, but intentionally returns
+the same human-readable reflection as the interactive command rather than JSON:
+
+```bash
+mentat reflection
+```
+
 ### Durable Targets
 
 Top-level `view` and `delete` use memory IDs from JSON output:
@@ -581,6 +588,32 @@ you want it to become part of normal memory context.
 ```
 
 **Output:** AI-generated summary of captured themes and insights over the specified period.
+
+### `/reflection`
+
+**Purpose:** Receive one candid, constructive reflection grounded in patterns across your saved memories.
+
+```bash
+/reflection
+# Or without entering the interactive session:
+mentat reflection
+```
+
+MENTAT does not wait for you to supply the angle. It looks for one defensible blind spot, rationalization, contradiction, avoidance pattern, costly habit, or strength with an unmanaged cost. The answer states the difficult conclusion, gives dated memory evidence, tests it against counterevidence, describes the possible cost, and ends with one bounded action or behavioral test. It is instructed to optimize for evidence, usefulness, and agency—not discomfort, diagnosis, or manufactured criticism.
+
+MENTAT automatically selects a bounded, deterministic cross-section of personal memories across the available timeline and content types. Every memory in a small corpus is represented; long entries may use their saved summary or a bounded excerpt. Larger corpora scale automatically:
+
+| Saved personal memories | Maximum selected memories |
+| ---: | ---: |
+| 1–50 | All |
+| 51–100 | 60 |
+| 101–250 | 70 |
+| 251–500 | 80 |
+| 501+ | 100 |
+
+The final prompt also has a fixed character budget so it remains bounded across configured models. Saved AI responses are excluded from the evidence, including older memories identified as AI responses through their source metadata.
+
+The command uses the model currently selected by `/model`, produces one answer, and does not save the answer to the database, make it available through `/save`, or create a file. It does not accept a topic or other arguments. The result is a bounded interpretation of the memories you chose to save, not a psychological diagnosis or a complete account of your life.
 
 ### `/synthesize <topic>`
 

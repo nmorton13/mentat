@@ -20,6 +20,7 @@ from mentat.core.ai import (
     synthesize_notes, extract_structured_entities
 )
 from mentat.core.llm import complete, complete_online
+from mentat.core.prompts import REFLECTION_PROMPT
 from mentat.chat.enhanced_chat import EnhancedChatSystem
 from mentat.cli.display import (
     console, make_urls_clickable,
@@ -38,7 +39,8 @@ from mentat.core.config import (
     CONNECTION_PREVIEW_LENGTH, TIMELINE_CONTENT_LENGTH, ENTITY_SEARCH_LIMIT,
     TOP_ENTITIES_PER_CATEGORY, TIMELINE_RECENT_ITEMS_LIMIT,
     REFERENCE_RELATED_MEMORIES_LIMIT, PERSONAL_CONTEXT_MEMORIES_LIMIT,
-    REFERENCE_EXPLANATION_MAX_TOKENS, get_current_model
+    REFERENCE_EXPLANATION_MAX_TOKENS, get_current_model,
+    resolve_reflection_corpus_limits,
 )
 
 
@@ -1142,6 +1144,208 @@ def handle_latest(user_id, db, last_displayed_items, limit=DEFAULT_MEMORY_LIMIT)
             print_tool_reply("[red]❌ No recent content found[/red]", " Latest Content", "MENTAT Latest Tool", "bright_red")
     except Exception as e:
         print_tool_reply(f"[bold red]❌ Failed to retrieve latest content: {e}[/bold red]", " Latest Content", "MENTAT Latest Tool", "bright_red")
+
+def _is_ai_derived_memory(memory: Dict[str, Any]) -> bool:
+    """Return whether a memory contains saved AI output rather than user evidence."""
+    if memory.get("command_type") == "ai_response":
+        return True
+
+    metadata = memory.get("metadata") or {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+
+    source = metadata.get("source", {}) if isinstance(metadata, dict) else {}
+    return source.get("type") == "ai_response"
+
+
+def _evenly_spaced_items(items: List[Any], count: int) -> List[Any]:
+    """Select deterministic items across the full extent of an ordered list."""
+    if count <= 0 or not items:
+        return []
+    if count >= len(items):
+        return list(items)
+    if count == 1:
+        return [items[len(items) // 2]]
+
+    indices = [round(index * (len(items) - 1) / (count - 1)) for index in range(count)]
+    return [items[index] for index in indices]
+
+
+def select_reflection_memories(
+    memories: List[Dict[str, Any]],
+    memory_limit: int,
+) -> List[Dict[str, Any]]:
+    """Select a deterministic sample distributed across time and content type."""
+    ordered = sorted(
+        memories,
+        key=lambda item: (item.get("timestamp") or "", item.get("id") or 0),
+    )
+    if memory_limit <= 0:
+        return []
+    if len(ordered) <= memory_limit:
+        return ordered
+
+    strata: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
+    for memory in ordered:
+        timestamp = str(memory.get("timestamp") or "unknown")
+        month = timestamp[:7] if len(timestamp) >= 7 else "unknown"
+        command_type = str(memory.get("command_type") or "unknown")
+        strata[(month, command_type)].append(memory)
+
+    stratum_keys = sorted(strata)
+    if len(stratum_keys) > memory_limit:
+        stratum_keys = _evenly_spaced_items(stratum_keys, memory_limit)
+
+    queues = {
+        key: _evenly_spaced_items(items, len(items))
+        for key, items in strata.items()
+        if key in stratum_keys
+    }
+    selected: List[Dict[str, Any]] = []
+    round_index = 0
+    while len(selected) < memory_limit:
+        progressed = False
+        for key in stratum_keys:
+            queue = queues[key]
+            if round_index < len(queue):
+                selected.append(queue[round_index])
+                progressed = True
+                if len(selected) == memory_limit:
+                    break
+        if not progressed:
+            break
+        round_index += 1
+
+    return sorted(
+        selected,
+        key=lambda item: (item.get("timestamp") or "", item.get("id") or 0),
+    )
+
+
+def format_reflection_corpus(
+    all_memories: List[Dict[str, Any]],
+    selected_memories: List[Dict[str, Any]],
+    max_corpus_chars: int,
+) -> str:
+    """Format a bounded evidence corpus and an explicit coverage boundary."""
+    dates = [str(item.get("timestamp")) for item in all_memories if item.get("timestamp")]
+    earliest = min(dates) if dates else "unknown"
+    latest = max(dates) if dates else "unknown"
+    selected_count = len(selected_memories)
+    per_memory_limit = max(
+        300,
+        (max_corpus_chars - 2_000) // max(selected_count, 1) - 120,
+    )
+
+    lines = [
+        "Corpus supplied by MENTAT:",
+        f"- Total saved personal memories: {len(all_memories)}",
+        f"- Memories included in this analysis: {selected_count}",
+        f"- Earliest saved memory: {earliest}",
+        f"- Latest saved memory: {latest}",
+        "- Selection method: deterministic sampling across the available timeline and content types",
+        "- Important limitation: this is a selective memory corpus, not a complete account of the user's life or actions",
+        "",
+        "Memories:",
+        "",
+    ]
+
+    for memory in selected_memories:
+        metadata = memory.get("metadata") or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (TypeError, json.JSONDecodeError):
+                metadata = {}
+
+        content = str(memory.get("content") or "")
+        summary = metadata.get("ai_summary") if isinstance(metadata, dict) else None
+        evidence_text = summary if isinstance(summary, str) and len(content) > per_memory_limit else content
+        evidence_text = standardize_truncation(evidence_text, per_memory_limit) or ""
+        tags = memory.get("tags") or []
+        tag_text = f" | tags: {', '.join(str(tag) for tag in tags)}" if tags else ""
+        lines.extend([
+            f"[ID {memory.get('id')} | {memory.get('timestamp') or 'unknown date'} | {memory.get('command_type') or 'unknown'}{tag_text}]",
+            evidence_text,
+            "",
+        ])
+
+    return "\n".join(lines)
+
+
+def handle_reflection(user_id, current_model, openrouter_client, db):
+    """Generate one non-persistent, corpus-wide constructive reflection."""
+    if not openrouter_client:
+        print_tool_reply(
+            "[red]❌ Reflection unavailable without a configured model.[/red]",
+            " Reflection",
+            "MENTAT Reflection",
+            "bright_red",
+        )
+        return
+
+    try:
+        archive_memories = db.get_memories_for_export(user_id)
+        personal_memories = [
+            memory for memory in archive_memories if not _is_ai_derived_memory(memory)
+        ]
+        if not personal_memories:
+            print_tool_reply(
+                "[yellow]No personal memories are available for reflection yet.[/yellow]",
+                " Reflection",
+                "MENTAT Reflection",
+                "bright_yellow",
+            )
+            return
+
+        limits = resolve_reflection_corpus_limits(len(personal_memories))
+        selected_memories = select_reflection_memories(
+            personal_memories,
+            limits["memory_limit"],
+        )
+        corpus_prompt = format_reflection_corpus(
+            personal_memories,
+            selected_memories,
+            limits["max_corpus_chars"],
+        )
+
+        with show_thinking_spinner("🪞 Reflecting across your memories..."):
+            reflection = complete(
+                openrouter_client,
+                current_model,
+                [
+                    {"role": "system", "content": REFLECTION_PROMPT},
+                    {"role": "user", "content": corpus_prompt},
+                ],
+            )
+
+        if should_use_markdown_rendering(reflection):
+            console.print(
+                render_markdown_to_panel(
+                    reflection,
+                    "🪞 Reflection",
+                    subtitle="MENTAT Reflection",
+                    border_style="bright_magenta",
+                )
+            )
+        else:
+            print_tool_reply(
+                format_content_with_markdown(reflection),
+                " Reflection",
+                "MENTAT Reflection",
+                "bright_magenta",
+            )
+    except Exception as exc:
+        print_tool_reply(
+            f"[red]❌ Reflection failed: {exc}[/red]",
+            " Reflection",
+            "MENTAT Reflection",
+            "bright_red",
+        )
+
 
 def handle_summary(user_id, days, current_model, openrouter_client, db):
     """Handle /summary command"""

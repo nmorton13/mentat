@@ -1,4 +1,7 @@
-from mentat.core.config import resolve_chat_retrieval_limits
+from mentat.core.config import (
+    resolve_chat_retrieval_limits,
+    resolve_reflection_corpus_limits,
+)
 
 
 def test_chat_retrieval_limits_scale_to_current_defaults(monkeypatch):
@@ -52,3 +55,25 @@ def test_chat_retrieval_limits_allow_partial_overrides(monkeypatch):
         "internal_multiplier": 1.6,
         "context_limit": 30,
     }
+
+
+def test_reflection_corpus_limits_scale_without_manual_tuning():
+    expected = {
+        0: 0,
+        10: 10,
+        50: 50,
+        51: 51,
+        100: 60,
+        101: 70,
+        250: 70,
+        251: 80,
+        500: 80,
+        501: 100,
+        1000: 100,
+    }
+
+    for memory_count, memory_limit in expected.items():
+        assert resolve_reflection_corpus_limits(memory_count) == {
+            "memory_limit": memory_limit,
+            "max_corpus_chars": 60_000,
+        }

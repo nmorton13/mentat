@@ -2,6 +2,20 @@
 
 All notable changes to Mentat are documented here.
 
+## 0.9.1 - 2026-08-06
+
+### Added
+
+- Added one-shot `/reflection` and `mentat reflection` output that uses the
+  active model to identify one difficult but constructive pattern across a
+  deterministic, automatically scaled cross-section of personal memories.
+
+### Safety
+
+- Reflection excludes saved AI responses, treats captured prompt-like text as
+  evidence rather than instructions, requires counterevidence, and never saves
+  its generated answer.
+
 ## 0.9.0 - 2026-08-06
 
 ### Added

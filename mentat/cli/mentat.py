@@ -68,7 +68,7 @@ from mentat.core.utils import standardize_truncation, parse_item_metadata
 from mentat.cli.commands import (
     handle_capture, handle_search, handle_links, handle_latest,
     handle_summary, handle_project, handle_tag, handle_todo, handle_mark,
-    handle_synthesize, generate_reference_explanation, handle_save_response,
+    handle_synthesize, handle_reflection, generate_reference_explanation, handle_save_response,
     handle_delete, handle_view_ai_reference, parse_link_memory,
     detect_ai_query, search_ai_responses
 )
@@ -130,6 +130,7 @@ HELP_TEXT = """
 • [cyan]/links [term][/cyan] - Show saved links | [cyan]/link <url> [comment][/cyan] - Save a link
 • [cyan]/latest[/cyan] - Show recent content
 • [cyan]/summary [days][/cyan] - Generate summary
+• [cyan]/reflection[/cyan] - Receive one candid, constructive reflection across your memories
 • [cyan]/project <name>[/cyan] - Analyze project
 • [cyan]/tag <tags>[/cyan] - Search by tags
 • [cyan]/todo [search|done][/cyan] - Show todos (completed hidden by default)
@@ -1004,6 +1005,12 @@ def interactive_mode(user_id):
                     chat_history = []
                     days = int(arg) if arg and arg.isdigit() else DEFAULT_SUMMARY_DAYS
                     handle_summary(user_id, days, current_model, openrouter_client, db)
+                elif cmd == "reflection":
+                    chat_history = []
+                    if arg:
+                        console.print("[red]❌ /reflection does not accept arguments[/red]")
+                        continue
+                    handle_reflection(user_id, current_model, openrouter_client, db)
                 elif cmd == "project" and arg:
                     chat_history = []
                     handle_project(arg, user_id, current_model, openrouter_client, db)
@@ -1189,6 +1196,7 @@ Examples:
   mentat                      # Interactive mode
   mentat capture "This idea from my walk still feels worth thinking through"
   mentat chat "what patterns do you see in my recent notes?"
+  mentat reflection
   mentat latest 25
   mentat search "artificial intelligence"
   mentat links
@@ -1206,7 +1214,7 @@ The /capture command intelligently analyzes and categorizes your content!
     parser.add_argument('--version', action='version', version=f'Mentat {release_version}')
 
     parser.add_argument('command', nargs='?', default=None, choices=[
-        'capture', 'chat', 'search', 'links', 'link', 'latest', 'summary',
+        'capture', 'chat', 'search', 'links', 'link', 'latest', 'summary', 'reflection',
         'project', 'tag', 'todo', 'model', 'synthesize', 'explore', 'explain',
         'connect', 'view', 'delete', 'mark', 'config', 'export', 'import'
     ], help='Command to execute')
@@ -1431,6 +1439,12 @@ The /capture command intelligently analyzes and categorizes your content!
         elif args.command == 'summary':
             days = int(content_arg) if content_arg and content_arg.isdigit() else args.days
             handle_summary(args.user, days, current_model, openrouter_client, db)
+
+        elif args.command == 'reflection':
+            if content_arg:
+                console.print("[red]❌ reflection does not accept arguments[/red]")
+                sys.exit(1)
+            handle_reflection(args.user, current_model, openrouter_client, db)
             
         elif args.command == 'project':
             if not content_arg:

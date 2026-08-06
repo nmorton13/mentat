@@ -666,6 +666,105 @@ def test_main_dispatches_synthesize(monkeypatch):
     assert captured == {"user_id": "u1", "topic": "React learning"}
 
 
+def test_select_reflection_memories_is_deterministic_and_stratified():
+    command_types = ["reflection", "status", "idea"]
+    memories = [
+        {
+            "id": index,
+            "content": f"memory {index}",
+            "command_type": command_types[index % len(command_types)],
+            "tags": [],
+            "timestamp": f"2025-{(index // 10) + 1:02d}-{(index % 10) + 1:02d}",
+            "metadata": {},
+        }
+        for index in range(120)
+    ]
+
+    selected = commands.select_reflection_memories(memories, 30)
+
+    assert selected == commands.select_reflection_memories(memories, 30)
+    assert len(selected) == 30
+    assert {item["command_type"] for item in selected} == set(command_types)
+    assert selected[0]["timestamp"] < selected[-1]["timestamp"]
+
+
+def test_handle_reflection_uses_personal_memories_and_does_not_save(monkeypatch):
+    captured = {}
+    replies = []
+
+    class ReflectionDB:
+        def get_memories_for_export(self, user_id):
+            captured["read_user"] = user_id
+            return [
+                {
+                    "id": 1,
+                    "content": "I keep building tools before writing.",
+                    "command_type": "reflection",
+                    "tags": ["writing"],
+                    "timestamp": "2025-06-01",
+                    "metadata": {},
+                },
+                {
+                    "id": 2,
+                    "content": "An earlier generated answer.",
+                    "command_type": "note",
+                    "tags": [],
+                    "timestamp": "2025-07-01",
+                    "metadata": {"source": {"type": "ai_response"}},
+                },
+                {
+                    "id": 3,
+                    "content": "I completed the draft.",
+                    "command_type": "status",
+                    "tags": ["writing"],
+                    "timestamp": "2025-08-01",
+                    "metadata": {},
+                },
+            ]
+
+    def fake_complete(client, model, messages):
+        captured["client"] = client
+        captured["model"] = model
+        captured["messages"] = messages
+        return "A plain reflection"
+
+    monkeypatch.setattr(commands, "complete", fake_complete)
+    monkeypatch.setattr(commands, "show_thinking_spinner", _noop_spinner)
+    monkeypatch.setattr(commands, "should_use_markdown_rendering", lambda _text: False)
+    monkeypatch.setattr(
+        commands,
+        "print_tool_reply",
+        lambda content, *args, **kwargs: replies.append(content),
+    )
+
+    client = object()
+    commands.handle_reflection("u1", "current-model", client, ReflectionDB())
+
+    assert captured["read_user"] == "u1"
+    assert captured["client"] is client
+    assert captured["model"] == "current-model"
+    assert captured["messages"][0]["content"] == commands.REFLECTION_PROMPT
+    corpus = captured["messages"][1]["content"]
+    assert "[ID 1 | 2025-06-01 | reflection" in corpus
+    assert "[ID 3 | 2025-08-01 | status" in corpus
+    assert "An earlier generated answer." not in corpus
+    assert replies == ["A plain reflection"]
+
+
+def test_main_dispatches_reflection(monkeypatch):
+    captured = {}
+
+    def fake_reflection(user_id, current_model, openrouter_client, db):
+        captured["user_id"] = user_id
+        captured["model"] = current_model
+
+    monkeypatch.setattr(mentat, "handle_reflection", fake_reflection)
+
+    run_main_with_args(monkeypatch, ["reflection", "--user", "u1"])
+
+    assert captured == {"user_id": "u1", "model": mentat.current_model}
+
+
 def test_main_dispatches_explore(monkeypatch):
     captured = {}
 
