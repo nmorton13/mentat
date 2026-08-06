@@ -4,6 +4,8 @@ An opinionated memory system for thoughts that keep tugging at you.
 
 Mentat is a local-first CLI app for selectively saving thoughts, links, notes, and research, then surfacing them later through hybrid search, semantic connections, temporal queries, and AI-assisted chat.
 
+**See Mentat in action:** [Capture, explore, and synthesize from the terminal →](docs/screenshots.md)
+
 ## Why Mentat?
 
 I built Mentat because most knowledge tools do not match how I actually think and work. Tabs pile up, links get
