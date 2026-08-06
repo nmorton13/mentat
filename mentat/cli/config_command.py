@@ -19,8 +19,14 @@ from dotenv import dotenv_values
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ENV_PATH = PROJECT_ROOT / ".env"
-SECRET_KEYS = {"OPENROUTER_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "CHAT_API_KEY"}
-VALID_RUNTIME_PROVIDERS = {"openrouter", "local", "custom", "ollama"}
+SECRET_KEYS = {
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "XAI_API_KEY",
+    "CHAT_API_KEY",
+    "VENICE_API_KEY",
+}
+VALID_RUNTIME_PROVIDERS = {"openrouter", "local", "custom", "ollama", "venice"}
 
 
 @dataclass(frozen=True)
@@ -247,6 +253,12 @@ def _effective_route(values: Mapping[str, str], env_path: Path) -> tuple[str, st
             runtime_model or values.get("OLLAMA_MODEL") or "gemma4:12b-mlx",
             values.get("OLLAMA_BASE_URL") or "http://127.0.0.1:11434",
         )
+    if provider == "venice":
+        return (
+            provider,
+            runtime_model or values.get("VENICE_MODEL") or "not set",
+            values.get("VENICE_BASE_URL") or "https://api.venice.ai/api/v1",
+        )
     if provider in {"local", "custom"}:
         return (
             provider,
@@ -277,13 +289,14 @@ def run_init(
 
     user_id = _ask("Mentat user ID", values.get("MENTAT_USER_ID") or "mentat", input_fn)
     default_provider = "custom" if current_provider in {"local", "custom"} else current_provider
-    if default_provider not in {"ollama", "openrouter", "custom"}:
+    if default_provider not in {"ollama", "openrouter", "custom", "venice"}:
         default_provider = "ollama"
     provider = _choose(
         "How should Mentat run its language model?",
         [
             ("ollama", "Ollama (local)"),
             ("openrouter", "OpenRouter (hosted)"),
+            ("venice", "Venice AI (hosted)"),
             ("custom", "Custom OpenAI-compatible endpoint"),
         ],
         default_provider,
@@ -315,6 +328,29 @@ def run_init(
             input_fn,
         )
         updates.update({"OPENROUTER_API_KEY": api_key, "OPENROUTER_MODEL": model})
+    elif provider == "venice":
+        api_key = _secret(
+            "Venice API key",
+            values.get("VENICE_API_KEY", ""),
+            secret_fn,
+        )
+        base_url = _ask_url(
+            "Venice base URL",
+            values.get("VENICE_BASE_URL") or "https://api.venice.ai/api/v1",
+            input_fn,
+            output,
+        )
+        model = _ask(
+            "Venice model",
+            values.get("VENICE_MODEL")
+            or (current_model if current_provider == "venice" else "venice-uncensored"),
+            input_fn,
+        )
+        updates.update({
+            "VENICE_API_KEY": api_key,
+            "VENICE_BASE_URL": base_url,
+            "VENICE_MODEL": model,
+        })
     else:
         base_url = _ask_url(
             "OpenAI-compatible base URL",
@@ -333,30 +369,85 @@ def run_init(
     else:
         helper_provider = _choose(
             "Choose the helper provider:",
-            [("ollama", "Ollama"), ("openrouter", "OpenRouter")],
-            values.get("HELPERS_PROVIDER") if values.get("HELPERS_PROVIDER") in {"ollama", "openrouter"} else provider if provider in {"ollama", "openrouter"} else "ollama",
+            [
+                ("ollama", "Ollama"),
+                ("openrouter", "OpenRouter"),
+                ("venice", "Venice AI"),
+            ],
+            values.get("HELPERS_PROVIDER")
+            if values.get("HELPERS_PROVIDER") in {"ollama", "openrouter", "venice"}
+            else provider
+            if provider in {"ollama", "openrouter", "venice"}
+            else "ollama",
             input_fn,
             output,
         )
         helper_default = (
             values.get("HELPERS_MODEL")
-            or (updates.get("OLLAMA_MODEL") if helper_provider == "ollama" else updates.get("OPENROUTER_MODEL"))
-            or (values.get("OLLAMA_MODEL") if helper_provider == "ollama" else values.get("OPENROUTER_MODEL"))
+            or (
+                updates.get("OLLAMA_MODEL")
+                if helper_provider == "ollama"
+                else updates.get("VENICE_MODEL")
+                if helper_provider == "venice"
+                else updates.get("OPENROUTER_MODEL")
+            )
+            or (
+                values.get("OLLAMA_MODEL")
+                if helper_provider == "ollama"
+                else values.get("VENICE_MODEL")
+                if helper_provider == "venice"
+                else values.get("OPENROUTER_MODEL")
+            )
             or model
         )
         helper_model = _ask("Helper model", helper_default, input_fn)
         updates.update({"HELPERS_PROVIDER": helper_provider, "HELPERS_MODEL": helper_model})
 
-    markdown_enabled = _confirm(
-        "Export captured memories as Markdown?",
-        values.get("MARKDOWN_EXPORT_ENABLED", "true").lower() not in {"false", "0", "no"},
-        input_fn,
+    current_markdown = (
+        values.get("MARKDOWN_EXPORT_ENABLED", "true").lower()
+        not in {"false", "0", "no"}
     )
+    current_okf = (
+        values.get("OKF_EXPORT_ENABLED", "false").lower()
+        not in {"false", "0", "no"}
+    )
+    current_export_mode = (
+        "both" if current_markdown and current_okf
+        else "journal" if current_markdown
+        else "okf" if current_okf
+        else "off"
+    )
+    export_mode = _choose(
+        "Choose automatic exports:",
+        [
+            ("journal", "Journal Markdown"),
+            ("okf", "Open Knowledge Format (OKF)"),
+            ("both", "Journal Markdown and OKF"),
+            ("off", "Off"),
+        ],
+        current_export_mode,
+        input_fn,
+        output,
+    )
+    markdown_enabled = export_mode in {"journal", "both"}
+    okf_enabled = export_mode in {"okf", "both"}
     updates["MARKDOWN_EXPORT_ENABLED"] = "true" if markdown_enabled else "false"
+    updates["OKF_EXPORT_ENABLED"] = "true" if okf_enabled else "false"
     if markdown_enabled:
         updates["MARKDOWN_EXPORT_PATH"] = _ask(
             "Markdown export path",
             values.get("MARKDOWN_EXPORT_PATH") or "data/markdown",
+            input_fn,
+        )
+    if okf_enabled:
+        updates["OKF_EXPORT_PATH"] = _ask(
+            "OKF export path",
+            values.get("OKF_EXPORT_PATH") or "data/okf",
+            input_fn,
+        )
+        updates["OKF_EXPORT_ACTOR"] = _ask(
+            "OKF actor identity",
+            values.get("OKF_EXPORT_ACTOR") or f"human:{user_id}",
             input_fn,
         )
 
@@ -396,7 +487,12 @@ def run_init(
     output(f"  Chat:    {route_provider} / {model}")
     helpers = "chat model" if updates.get("HELPERS_PROVIDER") == "chat" else f"{updates.get('HELPERS_PROVIDER')} / {updates.get('HELPERS_MODEL')}"
     output(f"  Helpers: {helpers}")
-    output(f"  Export:  {updates.get('MARKDOWN_EXPORT_PATH', 'disabled') if markdown_enabled else 'disabled'}")
+    export_summary = []
+    if markdown_enabled:
+        export_summary.append(f"Journal: {updates['MARKDOWN_EXPORT_PATH']}")
+    if okf_enabled:
+        export_summary.append(f"OKF: {updates['OKF_EXPORT_PATH']}")
+    output(f"  Export:  {', '.join(export_summary) if export_summary else 'disabled'}")
     output("\nTry: mentat capture \"A thought I want to return to...\"")
     return SetupResult(route_provider, model, changed)
 
@@ -414,9 +510,12 @@ def run_show(env_path: Path = DEFAULT_ENV_PATH, *, output: Callable[[str], None]
     output(f"Helpers:     {helper_provider} / {helper_model}")
     output(f"Online:      {values.get('ONLINE_MODEL') or 'not configured'}")
     output(f"Markdown:    {values.get('MARKDOWN_EXPORT_PATH') or 'data/markdown'} ({values.get('MARKDOWN_EXPORT_ENABLED') or 'true'})")
+    output(f"OKF:         {values.get('OKF_EXPORT_PATH') or 'data/okf'} ({values.get('OKF_EXPORT_ENABLED') or 'false'})")
+    output(f"OKF actor:   {values.get('OKF_EXPORT_ACTOR') or 'mentat/<version>'}")
     output(f"Voice:       {values.get('VOICE_PROVIDER') or 'not configured'}")
     output(f"OpenRouter:  {_masked('OPENROUTER_API_KEY', values.get('OPENROUTER_API_KEY', ''))}")
     output(f"OpenAI:      {_masked('OPENAI_API_KEY', values.get('OPENAI_API_KEY', ''))}")
+    output(f"Venice:      {_masked('VENICE_API_KEY', values.get('VENICE_API_KEY', ''))}")
     output(f"xAI:         {_masked('XAI_API_KEY', values.get('XAI_API_KEY', ''))}")
     return 0
 
@@ -430,7 +529,11 @@ def _check_endpoint(provider: str, model: str, endpoint: str, values: Mapping[st
         url = f"{endpoint.rstrip('/')}/api/tags"
     else:
         url = f"{endpoint.rstrip('/')}/models"
-        api_key = values.get("CHAT_API_KEY", "")
+        api_key = (
+            values.get("VENICE_API_KEY", "")
+            if provider == "venice"
+            else values.get("CHAT_API_KEY", "")
+        )
         if api_key and api_key != "local":
             headers["Authorization"] = f"Bearer {api_key}"
 
@@ -485,6 +588,9 @@ def run_doctor(env_path: Path = DEFAULT_ENV_PATH, *, output: Callable[[str], Non
         else:
             report("fail", "OpenRouter is active but OPENROUTER_API_KEY is not set")
             failures += 1
+    elif provider == "venice" and not values.get("VENICE_API_KEY"):
+        report("fail", "Venice is active but VENICE_API_KEY is not set")
+        failures += 1
     else:
         ok, message = _check_endpoint(provider, model, endpoint, values)
         report("ok" if ok else "fail", message)
@@ -510,6 +616,25 @@ def run_doctor(env_path: Path = DEFAULT_ENV_PATH, *, output: Callable[[str], Non
             report("ok", f"helper tasks share ollama / {helper_model}")
         else:
             ok, message = _check_endpoint("ollama", helper_model, helper_endpoint, values)
+            report("ok" if ok else "fail", f"helper {message}")
+            failures += 0 if ok else 1
+    elif helper_provider == "venice":
+        helper_endpoint = (
+            values.get("VENICE_BASE_URL") or "https://api.venice.ai/api/v1"
+        )
+        helper_model = values.get("HELPERS_MODEL") or values.get("VENICE_MODEL") or ""
+        if not values.get("VENICE_API_KEY") or not helper_model:
+            report("fail", "helpers use Venice but its API key or model is missing")
+            failures += 1
+        elif provider == "venice" and helper_model == model:
+            report("ok", f"helper tasks share venice / {helper_model}")
+        else:
+            ok, message = _check_endpoint(
+                "venice",
+                helper_model,
+                helper_endpoint,
+                values,
+            )
             report("ok" if ok else "fail", f"helper {message}")
             failures += 0 if ok else 1
     elif helper_provider == "local":
@@ -541,6 +666,30 @@ def run_doctor(env_path: Path = DEFAULT_ENV_PATH, *, output: Callable[[str], Non
             failures += 1
     else:
         report("skip", "Markdown export is disabled")
+
+    okf_export_enabled = (
+        values.get("OKF_EXPORT_ENABLED", "false").lower()
+        not in {"false", "0", "no"}
+    )
+    if okf_export_enabled:
+        okf_path = Path(values.get("OKF_EXPORT_PATH") or "data/okf")
+        if not okf_path.is_absolute():
+            okf_path = env_path.parent / okf_path
+        parent = okf_path if okf_path.exists() else okf_path.parent
+        while not parent.exists() and parent != parent.parent:
+            parent = parent.parent
+        if parent.exists() and os.access(parent, os.W_OK):
+            report("ok", f"OKF export path is writable: {okf_path}")
+        else:
+            report("fail", f"OKF export path is not writable: {okf_path}")
+            failures += 1
+        actor = values.get("OKF_EXPORT_ACTOR", "").strip()
+        if actor:
+            report("ok", "OKF actor identity is configured")
+        else:
+            report("warn", "OKF actor is unset; Mentat will use its versioned identity")
+    else:
+        report("skip", "OKF export is disabled")
 
     voice_provider = values.get("VOICE_PROVIDER", "").lower()
     if voice_provider:

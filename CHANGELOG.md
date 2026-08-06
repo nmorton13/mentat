@@ -2,6 +2,45 @@
 
 All notable changes to Mentat are documented here.
 
+## 0.9.0 - 2026-08-06
+
+### Added
+
+- Added explicit Journal Markdown v1 snapshot export and duplicate-safe import,
+  including dry-run and JSON result modes.
+- Added Open Knowledge Format v0.2 export, validation, import, and opt-in
+  automatic writing with one concept file per memory.
+- Added independent Journal, OKF, both, or off choices to guided setup, plus
+  masked configuration display and writable-path diagnostics.
+- Added Venice AI as a named OpenAI-compatible chat and helper provider with
+  guided setup, `/model venice`, and provider diagnostics.
+
+### Changed
+
+- Declared PyYAML directly for safe OKF frontmatter parsing.
+- Documented Journal v1 as the stable human-readable archive and OKF as the
+  portable round-trip format.
+- Retained and reverified the first-use local embedding-model download,
+  Hugging Face cache, and offline-after-download documentation.
+
+### Fixed
+
+- Rendered `/explore` concept-tree Markdown without exposing formatting markers
+  or collapsing the tree layout.
+- Normalized matching outer quotes in `/explore` and `/explain`, honored the
+  configured exploration depth, and clarified that the concept limit applies
+  to each parent.
+- Routed `/explain` through the active chat model instead of sending a
+  hardcoded hosted model name to local Ollama.
+
+### Safety
+
+- Manual exports refuse nonempty destinations.
+- OKF imports preserve unknown metadata but never execute attested
+  computations, executors, attesters, SQL, scripts, or referenced code.
+- Personal OKF actor identities remain in the ignored local `.env`; no personal
+  actor is shipped in public defaults.
+
 ## 0.8.2 - 2026-07-17
 
 ### Changed

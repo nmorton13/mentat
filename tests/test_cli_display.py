@@ -39,3 +39,15 @@ def test_format_metadata_display_includes_core_fields():
 def test_format_numbered_list_item_handles_single_digit():
     assert display.format_numbered_list_item("3. test item") == "3. test item"
     assert display.format_numbered_list_item("10. test item") is None
+
+
+def test_render_concept_tree_content_renders_inline_markdown_and_preserves_lines():
+    rendered = display.render_concept_tree_content(
+        "🌳 **Open Source**\n├── **Collaboration** [1]\n\nUse `/explore 1`"
+    )
+
+    assert rendered.plain == (
+        "🌳 Open Source\n├── Collaboration [1]\n\nUse /explore 1"
+    )
+    assert any(span.style == "bold" for span in rendered.spans)
+    assert any(span.style == "cyan" for span in rendered.spans)

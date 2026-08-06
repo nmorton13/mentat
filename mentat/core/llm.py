@@ -243,7 +243,7 @@ def get_task_llm_route(
     """Resolve provider/client/model for a feature-specific LLM task.
 
     Env/config convention:
-    - <TASK>_PROVIDER: chat (default), openrouter, local, ollama, or custom
+    - <TASK>_PROVIDER: chat (default), openrouter, local, ollama, venice, or custom
     - <TASK>_MODEL: optional task-specific model override
     - <TASK>_BASE_URL and <TASK>_API_KEY: used for custom provider
 
@@ -282,6 +282,31 @@ def get_task_llm_route(
         source = "task override" if task_model else ("ollama default" if config.OLLAMA_MODEL else "fallback")
         client = _cached_ollama_client(base_url)
         return LLMRoute(provider="ollama", client=client, model=model, base_url=base_url, model_source=source)
+
+    if provider == "venice":
+        base_url = config.VENICE_BASE_URL
+        model = task_model or config.VENICE_MODEL or requested_model or config.get_current_model()
+        source = "task override" if task_model else ("venice default" if config.VENICE_MODEL else "fallback")
+        if not config.VENICE_API_KEY:
+            return LLMRoute(
+                provider="venice",
+                client=None,
+                model=model,
+                base_url=base_url,
+                model_source="missing api key",
+            )
+        client = _cached_openai_client(
+            "venice",
+            base_url,
+            config.VENICE_API_KEY,
+        )
+        return LLMRoute(
+            provider="venice",
+            client=client,
+            model=model,
+            base_url=base_url,
+            model_source=source,
+        )
 
     if provider == "custom":
         import os

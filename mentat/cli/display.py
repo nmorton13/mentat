@@ -138,6 +138,24 @@ def format_content_with_markdown(text: Optional[str]) -> Optional[str]:
     # Return text ready for Rich Markdown widget or manual processing
     return text
 
+
+def render_concept_tree_content(text: str) -> Text:
+    """Render concept-tree inline Markdown while preserving its line structure."""
+    rendered = Text()
+    cursor = 0
+    token_pattern = re.compile(r"\*\*(.+?)\*\*|`([^`\n]+)`")
+
+    for match in token_pattern.finditer(text):
+        rendered.append(text[cursor:match.start()])
+        if match.group(1) is not None:
+            rendered.append(match.group(1), style="bold")
+        else:
+            rendered.append(match.group(2), style="cyan")
+        cursor = match.end()
+
+    rendered.append(text[cursor:])
+    return rendered
+
 def render_markdown_content(text):
     """Render content using Rich Markdown widget for better markdown support"""
     if not text:
@@ -543,6 +561,7 @@ def display_llm_routes_table(current_model, chat_client=None):
     console.print(
         "[dim]/model changes the active chat route: saved models route through OpenRouter; "
         "/model local uses OpenAI-compatible local endpoints; /model ollama <model> uses native Ollama. "
+        "/model venice <model> uses the configured Venice API. "
         "Explicit feature routes still come from .env.[/dim]"
     )
 
@@ -560,8 +579,8 @@ def display_models_table(current_model):
         model_table.add_row(str(i), k, v, status)
     
     console.print(model_table)
-    console.print("[dim]Use /model <number|name> for OpenRouter, /model local, /model ollama <model>, or /model openrouter <model-id>[/dim]")
-    console.print("[dim]Saved models route through OpenRouter; /model local uses OpenAI-compatible local settings; /model ollama uses native /api/chat[/dim]")
+    console.print("[dim]Use /model <number|name> for OpenRouter, /model local, /model ollama <model>, /model venice <model>, or /model openrouter <model-id>[/dim]")
+    console.print("[dim]Saved models route through OpenRouter; /model local uses OpenAI-compatible local settings; /model ollama uses native /api/chat; /model venice uses the Venice OpenAI-compatible endpoint[/dim]")
 def display_search_results(results):
     """Display search results in a beautiful table"""
     from mentat.core.config import SEARCH_PREVIEW_LENGTH

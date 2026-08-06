@@ -1,12 +1,14 @@
 # Mentat Documentation
 
-This documentation describes the core Mentat app: selective capture, search, chat, voice, markdown export, and tools.
+This documentation describes the core Mentat app: selective capture, search,
+chat, voice, Journal Markdown and OKF interchange, and tools.
 
 ## Guides
 
 - [Installation](installation.md)
 - [Command Reference](commands.md)
 - [Configuration](configuration.md)
+- [Export, Import, and Interchange](interchange.md)
 - [Architecture](architecture.md)
 - [Database](database.md)
 - [Tools](tools.md)

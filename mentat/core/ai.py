@@ -673,6 +673,14 @@ def process_content_with_ai(
         except Exception as e:
             # Don't fail the memory save if markdown export fails
             print(f"Note: Markdown export failed: {e}")
+
+        try:
+            from .okf_transfer import save_database_memory_to_okf
+
+            if not save_database_memory_to_okf(db, memory_id, user_id):
+                print("Note: OKF export failed")
+        except Exception as e:
+            print(f"Note: OKF export failed: {e}")
         
         return memory_id, final_tags, analysis.get('type', command_type), themes, actionable_items, enhanced_metadata
         

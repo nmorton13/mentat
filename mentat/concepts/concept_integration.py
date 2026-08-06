@@ -719,7 +719,7 @@ def _convert_concept_web_to_hierarchy(concept_web, max_concepts: int) -> Dict:
 def build_deep_hierarchical_concept_tree(concept: str, user_id: str, db: MemoryDatabase,
                                         openrouter_client: Any) -> Dict:
     """
-    Build a deep 3-level hierarchical concept tree for /explore command
+    Build a hierarchical concept tree at the configured exploration depth.
 
     Args:
         concept: Root concept to explore
@@ -728,7 +728,7 @@ def build_deep_hierarchical_concept_tree(concept: str, user_id: str, db: MemoryD
         openrouter_client: OpenRouter client
 
     Returns:
-        3-level hierarchical concept tree dictionary with nested structure
+        Hierarchical concept tree dictionary with nested structure
     """
     from mentat.core.config import CONCEPT_EXPLORATION_DEFAULT_DEPTH, CONCEPT_EXPLORATION_MAX_CONCEPTS
     
@@ -737,14 +737,13 @@ def build_deep_hierarchical_concept_tree(concept: str, user_id: str, db: MemoryD
     # Get user's knowledge context
     user_memories = db.comprehensive_search(user_id, concept)[:5]  # More context for deeper exploration
     
-    # Use config values for deep tree - 3 levels
-    depth = CONCEPT_EXPLORATION_DEFAULT_DEPTH  # Default: 3
-    max_concepts = CONCEPT_EXPLORATION_MAX_CONCEPTS  # Default: 4
+    depth = CONCEPT_EXPLORATION_DEFAULT_DEPTH
+    max_concepts = CONCEPT_EXPLORATION_MAX_CONCEPTS
     
     # Build deep concept web using the explorer
     concept_web = integration_manager.explorer.explore_concept(
         concept=concept,
-        depth=3,  # 3 levels: main concepts → sub-concepts → deep concepts
+        depth=depth,
         max_concepts=max_concepts,
         user_knowledge_context=user_memories
     )

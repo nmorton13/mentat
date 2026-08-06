@@ -107,15 +107,16 @@ def format_entities_for_markdown(metadata: Dict[str, Any]) -> str:
     return " ".join(entity_parts[:4])  # Limit total entities shown
 
 
-def get_markdown_file_path(timestamp: str) -> Path:
+def get_markdown_file_path(timestamp: str, export_path: Optional[Path] = None) -> Path:
     """Get the markdown file path for a given timestamp"""
+    base_path = Path(export_path) if export_path is not None else Path(MARKDOWN_EXPORT_PATH)
     try:
         dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
         year = dt.strftime('%Y')
         month = dt.strftime('%m-%B')
         filename = dt.strftime('%Y-%m-%d.md')
         
-        file_path = Path(MARKDOWN_EXPORT_PATH) / year / month / filename
+        file_path = base_path / year / month / filename
         return file_path
     except (ValueError, AttributeError):
         # Fallback to current date if timestamp parsing fails
@@ -124,7 +125,7 @@ def get_markdown_file_path(timestamp: str) -> Path:
         month = now.strftime('%m-%B')
         filename = now.strftime('%Y-%m-%d.md')
         
-        file_path = Path(MARKDOWN_EXPORT_PATH) / year / month / filename
+        file_path = base_path / year / month / filename
         return file_path
 
 
@@ -442,7 +443,9 @@ def save_memory_to_markdown(
     tags: Optional[List[str]] = None,
     metadata: Optional[Dict[str, Any]] = None,
     timestamp: Optional[str] = None,
-    user_id: Optional[str] = None
+    user_id: Optional[str] = None,
+    export_path: Optional[Path] = None,
+    force: bool = False,
 ) -> bool:
     """
     Save a memory to the appropriate daily markdown file.
@@ -457,7 +460,7 @@ def save_memory_to_markdown(
     Returns:
         bool: True if successful, False otherwise
     """
-    if not MARKDOWN_EXPORT_ENABLED:
+    if not MARKDOWN_EXPORT_ENABLED and not force:
         return True  # Silently skip if disabled
     
     try:
@@ -470,7 +473,7 @@ def save_memory_to_markdown(
         metadata = metadata or {}
         
         # Get the file path
-        file_path = get_markdown_file_path(timestamp)
+        file_path = get_markdown_file_path(timestamp, export_path=export_path)
         
         # Ensure directory exists
         ensure_private_directory(file_path.parent)

@@ -15,6 +15,8 @@ Mentat core is a local-first Python app with two main surfaces:
 - `mentat/core/ai.py` - LLM, embedding, extraction, and capture-analysis helpers
 - `mentat/core/database.py` - SQLite storage and search helpers
 - `mentat/core/markdown_export.py` - Markdown export pipeline
+- `mentat/core/journal_transfer.py` - Journal Markdown v1 snapshot export/import
+- `mentat/core/okf_transfer.py` - OKF v0.2 export, validation, and import
 - `mentat/chat/enhanced_chat.py` - context-aware chat over stored memories
 - `mentat/chat/mentat_voice_session.py` - voice session orchestration
 - `mentat/chat/tools/` - retained memory tool definitions
@@ -26,7 +28,7 @@ Mentat core is a local-first Python app with two main surfaces:
 1. The user captures content through the CLI.
 2. Mentat analyzes the content with the configured LLM.
 3. The database stores the original content, tags, metadata, and embeddings.
-4. Optional Markdown export writes a readable archive.
+4. Optional Journal Markdown and OKF exporters write local archives.
 5. Search, chat, project analysis, and concept exploration retrieve context from the same core store.
 
 Hosted LLM routes receive the prompt content required for their task. Normal

@@ -184,6 +184,19 @@ async def handler(arguments: Dict[str, Any], context: Dict[str, Any]) -> Dict[st
                     exc_info=True,
                 )
 
+            try:
+                from mentat.core.okf_transfer import save_database_memory_to_okf
+
+                if not save_database_memory_to_okf(db, memory_id, user_id):
+                    log.warning("OKF export failed for %s capture", channel)
+            except Exception as exc:
+                log.warning(
+                    "OKF export failed for %s capture: %s",
+                    channel,
+                    exc,
+                    exc_info=True,
+                )
+
         return {
             "success": True,
             "memory_id": memory_id,

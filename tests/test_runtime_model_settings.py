@@ -24,6 +24,8 @@ def _load_config(monkeypatch, tmp_path, clear_online_model=True, clear_chat_prov
     monkeypatch.setenv("RUNTIME_SETTINGS_PATH", str(runtime_settings))
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
     monkeypatch.setenv("OPENROUTER_MODEL", "x-ai/grok-4.5")
+    monkeypatch.setenv("VENICE_API_KEY", "")
+    monkeypatch.setenv("VENICE_MODEL", "")
     if clear_chat_provider:
         monkeypatch.setenv("CHAT_BASE_URL", "")
         monkeypatch.setenv("CHAT_API_KEY", "")
@@ -108,6 +110,23 @@ def test_ollama_runtime_route_is_distinct_from_local(monkeypatch, tmp_path):
     data = json.loads(runtime_settings.read_text())
     assert data["chat_provider"] == "ollama"
     assert data["current_model"] == "gemma4:12b-mlx"
+
+
+def test_venice_runtime_route_uses_named_provider_settings(monkeypatch, tmp_path):
+    config, runtime_settings = _load_config(monkeypatch, tmp_path)
+    monkeypatch.setenv("VENICE_API_KEY", "venice-test-key")
+    monkeypatch.setenv("VENICE_MODEL", "venice-test-model")
+    config = importlib.reload(config)
+
+    assert config.set_chat_route("venice", "venice-test-model") is True
+    assert config.get_chat_provider() == "venice"
+    assert config.get_chat_base_url() == "https://api.venice.ai/api/v1"
+    assert config.get_chat_api_key() == "venice-test-key"
+    assert config.get_current_model() == "venice-test-model"
+
+    data = json.loads(runtime_settings.read_text())
+    assert data["chat_provider"] == "venice"
+    assert data["current_model"] == "venice-test-model"
 
 
 def test_helpers_defaults_apply_to_task_routes_and_specific_overrides(monkeypatch, tmp_path):

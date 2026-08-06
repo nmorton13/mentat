@@ -101,6 +101,30 @@ def test_task_route_ollama_uses_native_client(monkeypatch):
     assert route.base_url == "http://127.0.0.1:11434"
 
 
+def test_task_route_venice_uses_named_openai_compatible_client(monkeypatch):
+    created = {}
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs):
+            created.update(kwargs)
+
+    monkeypatch.setattr(config, "ENTITY_EXTRACTION_PROVIDER", "venice")
+    monkeypatch.setattr(config, "ENTITY_EXTRACTION_MODEL", None)
+    monkeypatch.setattr(config, "VENICE_API_KEY", "venice-test-key")
+    monkeypatch.setattr(config, "VENICE_BASE_URL", "https://venice.example/api/v1")
+    monkeypatch.setattr(config, "VENICE_MODEL", "venice-test-model")
+    monkeypatch.setattr("mentat.core.llm.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("mentat.core.llm._ROUTE_CLIENTS", {})
+
+    route = get_task_llm_route("ENTITY_EXTRACTION", chat_client="chat-client")
+
+    assert route.provider == "venice"
+    assert route.model == "venice-test-model"
+    assert route.model_source == "venice default"
+    assert created["api_key"] == "venice-test-key"
+    assert created["base_url"] == "https://venice.example/api/v1"
+
+
 def test_route_display_rows_include_primary_routes(monkeypatch):
     monkeypatch.setattr(config, "CONCEPT_EXPLORATION_PROVIDER", "chat")
     monkeypatch.setattr(config, "CONCEPT_EXPLORATION_MODEL", None)

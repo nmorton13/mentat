@@ -297,7 +297,7 @@ wheels = [
 
 [[package]]
 name = "mentat"
-version = "0.8.2"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
@@ -305,6 +305,7 @@ dependencies = [
     { name = "pandas" },
     { name = "prompt-toolkit" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "requests" },
     { name = "rich" },
     { name = "scipy" },
@@ -331,6 +332,7 @@ requires-dist = [
     { name = "prompt-toolkit", specifier = ">=3.0.0" },
     { name = "pyaudio", marker = "extra == 'voice'", specifier = ">=0.2.11" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.10.0" },

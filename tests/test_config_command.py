@@ -64,6 +64,7 @@ def test_init_creates_minimal_ollama_config_and_activates_route(tmp_path):
         "HELPERS_PROVIDER": "chat",
         "HELPERS_MODEL": "",
         "MARKDOWN_EXPORT_ENABLED": "true",
+        "OKF_EXPORT_ENABLED": "false",
         "MARKDOWN_EXPORT_PATH": "notes",
     }
     assert any("Mentat is ready" in line for line in output)
@@ -83,6 +84,114 @@ def test_init_decline_writes_nothing(tmp_path):
     assert not env_path.exists()
 
 
+def test_init_can_enable_both_exports_with_local_actor(tmp_path):
+    env_path = tmp_path / ".env"
+
+    result = config_command.run_init(
+        env_path,
+        input_fn=_answers(
+            "test-user",
+            "1",
+            "",
+            "qwen3:8b",
+            "",
+            "3",
+            "notes",
+            "okf-notes",
+            "",
+            "",
+            "",
+        ),
+        secret_fn=lambda _prompt: "",
+        output=lambda _message: None,
+        activate_route=lambda _provider, _model: True,
+    )
+
+    assert result == config_command.SetupResult("ollama", "qwen3:8b", True)
+    values = config_command.EnvDocument(env_path).values()
+    assert values["MARKDOWN_EXPORT_ENABLED"] == "true"
+    assert values["MARKDOWN_EXPORT_PATH"] == "notes"
+    assert values["OKF_EXPORT_ENABLED"] == "true"
+    assert values["OKF_EXPORT_PATH"] == "okf-notes"
+    assert values["OKF_EXPORT_ACTOR"] == "human:test-user"
+
+
+def test_init_configures_named_venice_provider(tmp_path):
+    env_path = tmp_path / ".env"
+    activated = []
+
+    result = config_command.run_init(
+        env_path,
+        input_fn=_answers(
+            "test-user",
+            "3",
+            "",
+            "venice-test-model",
+            "",
+            "4",
+            "",
+            "",
+        ),
+        secret_fn=lambda _prompt: "venice-test-key",
+        output=lambda _message: None,
+        activate_route=lambda provider, model: activated.append((provider, model)) or True,
+    )
+
+    assert result == config_command.SetupResult("venice", "venice-test-model", True)
+    assert activated == [("venice", "venice-test-model")]
+    values = config_command.EnvDocument(env_path).values()
+    assert values["VENICE_API_KEY"] == "venice-test-key"
+    assert values["VENICE_BASE_URL"] == "https://api.venice.ai/api/v1"
+    assert values["VENICE_MODEL"] == "venice-test-model"
+    assert values["MARKDOWN_EXPORT_ENABLED"] == "false"
+    assert values["OKF_EXPORT_ENABLED"] == "false"
+
+
+def test_doctor_checks_named_venice_provider(monkeypatch, tmp_path):
+    env_path = tmp_path / ".env"
+    runtime_path = tmp_path / "runtime.json"
+    runtime_path.write_text(
+        json.dumps({
+            "chat_provider": "venice",
+            "current_model": "venice-test-model",
+        }),
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "RUNTIME_SETTINGS_PATH=runtime.json\n"
+        "VENICE_API_KEY=venice-test-key\n"
+        "VENICE_MODEL=venice-test-model\n"
+        "HELPERS_PROVIDER=chat\n"
+        "MARKDOWN_EXPORT_ENABLED=false\n"
+        "OKF_EXPORT_ENABLED=false\n",
+        encoding="utf-8",
+    )
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"data": [{"id": "venice-test-model"}]}
+
+    requests_seen = []
+
+    def fake_get(url, headers, timeout):
+        requests_seen.append((url, headers, timeout))
+        return Response()
+
+    monkeypatch.setattr(config_command.requests, "get", fake_get)
+    output = []
+
+    assert config_command.run_doctor(env_path, output=output.append) == 0
+    assert requests_seen == [(
+        "https://api.venice.ai/api/v1/models",
+        {"Authorization": "Bearer venice-test-key"},
+        3,
+    )]
+    assert any("venice-test-model" in line for line in output)
+
+
 def test_show_never_prints_secret_values(tmp_path):
     env_path = tmp_path / ".env"
     env_path.write_text(
@@ -99,7 +208,10 @@ def test_show_never_prints_secret_values(tmp_path):
     assert "super-secret-value" not in rendered
     assert "another-secret-value" not in rendered
     assert "xai-secret-value" not in rendered
-    assert rendered.count("set") == 3
+    assert "OpenRouter:  set" in rendered
+    assert "OpenAI:      set" in rendered
+    assert "Venice:      not set" in rendered
+    assert "xAI:         set" in rendered
 
 
 def test_doctor_reports_missing_openrouter_key_as_blocking(tmp_path):

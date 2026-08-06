@@ -9,7 +9,7 @@ commands do not require the interactive slash-command session.
 
 ### JSON Output
 
-`chat`, `search`, `latest`, `links`, and `todo` support `--json`:
+`chat`, `search`, `latest`, `links`, `todo`, `export`, and `import` support `--json`:
 
 ```bash
 mentat chat "what changed recently?" --json
@@ -17,6 +17,8 @@ mentat search "machine learning" --json
 mentat latest 25 --json
 mentat links "research" --json
 mentat todo pending --json
+mentat export okf /tmp/mentat-okf --json
+mentat import okf /tmp/mentat-okf --dry-run --json
 ```
 
 JSON mode prints one JSON object to stdout:
@@ -77,7 +79,7 @@ mentat config init
 ```
 
 `init` configures the Mentat user ID, chat provider and model, helper behavior,
-Markdown export, and optional voice settings. It previews changes before safely
+Journal/OKF export, and optional voice settings. It previews changes before safely
 updating `.env`, preserves unrelated variables and comments, and activates the
 selected chat route.
 
@@ -87,14 +89,41 @@ Inspect the effective setup without exposing API keys:
 mentat config show
 ```
 
-Check required credentials, local endpoint/model availability, helper routing,
-Markdown export, and optional voice setup:
+Check required credentials, provider endpoint/model availability, helper routing,
+Journal/OKF export, and optional voice setup:
 
 ```bash
 mentat config doctor
 ```
 
 `doctor` exits with a nonzero status when it finds a blocking setup problem.
+
+### Export And Import
+
+Create an explicit snapshot of every memory for the selected user:
+
+```bash
+mentat export markdown /path/to/journal
+mentat export okf /path/to/bundle
+```
+
+The destination must be new or empty. Journal export uses Mentat's dated,
+Obsidian-friendly Journal Markdown v1 layout. OKF export writes a conforming
+Open Knowledge Format v0.2 bundle with one concept per memory.
+
+Preview or perform an import:
+
+```bash
+mentat import markdown /path/to/journal --dry-run
+mentat import okf /path/to/bundle --dry-run
+mentat import markdown /path/to/journal
+mentat import okf /path/to/bundle
+```
+
+Imports avoid exact duplicates and generate local embeddings without LLM
+reanalysis. OKF import validates the bundle, preserves unknown frontmatter
+fields, and never executes attested computations or referenced code. See
+[Export, Import, and Interchange](interchange.md).
 
 ## Content Capture Commands
 

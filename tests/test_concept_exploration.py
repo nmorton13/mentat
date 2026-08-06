@@ -55,6 +55,40 @@ def test_deep_concept_tree_hint_matches_execution_context():
     assert "/explain <number>" not in one_shot
 
 
+def test_deep_concept_tree_honors_configured_depth(monkeypatch):
+    captured = {}
+
+    class FakeExplorer:
+        def explore_concept(self, **kwargs):
+            captured.update(kwargs)
+            return type("ConceptWeb", (), {"nodes": {}})()
+
+    class FakeManager:
+        def __init__(self, db, client):
+            self.explorer = FakeExplorer()
+
+    from mentat.core import config
+
+    monkeypatch.setattr(config, "CONCEPT_EXPLORATION_DEFAULT_DEPTH", 2)
+    monkeypatch.setattr(config, "CONCEPT_EXPLORATION_MAX_CONCEPTS", 4)
+    monkeypatch.setattr(concept_integration, "ConceptIntegrationManager", FakeManager)
+    monkeypatch.setattr(
+        concept_integration,
+        "_convert_concept_web_to_deep_hierarchy",
+        lambda concept_web, max_concepts: {"concepts": []},
+    )
+
+    concept_integration.build_deep_hierarchical_concept_tree(
+        "open source",
+        "user1",
+        DummyDB(),
+        openrouter_client=None,
+    )
+
+    assert captured["depth"] == 2
+    assert captured["max_concepts"] == 4
+
+
 def test_get_diverse_concepts_uses_llm_wrapper(monkeypatch):
     calls = []
 

@@ -26,7 +26,7 @@ from mentat.cli.display import (
     format_content_with_markdown, render_markdown_to_panel,
     should_use_markdown_rendering, format_metadata_display,
     create_standard_panel, print_tool_reply, show_thinking_spinner,
-    show_contextual_commands
+    show_contextual_commands, render_concept_tree_content
 )
 from mentat.core.utils import standardize_truncation, parse_item_metadata
 from mentat.core.config import (
@@ -38,7 +38,7 @@ from mentat.core.config import (
     CONNECTION_PREVIEW_LENGTH, TIMELINE_CONTENT_LENGTH, ENTITY_SEARCH_LIMIT,
     TOP_ENTITIES_PER_CATEGORY, TIMELINE_RECENT_ITEMS_LIMIT,
     REFERENCE_RELATED_MEMORIES_LIMIT, PERSONAL_CONTEXT_MEMORIES_LIMIT,
-    REFERENCE_EXPLANATION_MAX_TOKENS
+    REFERENCE_EXPLANATION_MAX_TOKENS, get_current_model
 )
 
 
@@ -70,7 +70,7 @@ def handle_view_ai_reference(
     from mentat.cli.display import (
         console, show_thinking_spinner, should_use_markdown_rendering,
         render_markdown_to_panel, format_content_with_markdown,
-        create_standard_panel
+        create_standard_panel, render_concept_tree_content
     )
 
     # Generate comprehensive explanation using existing web search
@@ -123,8 +123,12 @@ def handle_view_ai_reference(
                 concept_display = integration_manager.format_concept_web_display(concept_tree, depth_level=2)
 
             console.print()  # Add spacing
-            formatted_concept_display = format_content_with_markdown(concept_display)
-            concept_panel = create_standard_panel(formatted_concept_display, "🌳 Related Concepts to Explore", None, "bright_cyan")
+            concept_panel = create_standard_panel(
+                render_concept_tree_content(concept_display),
+                "🌳 Related Concepts to Explore",
+                None,
+                "bright_cyan",
+            )
             console.print(concept_panel)
 
             # Add all concepts (main + sub) as explorable references to enhanced chat
@@ -359,6 +363,14 @@ def save_memory(
         except Exception as e:
             # Don't fail the memory save if markdown export fails
             console.print(f"[dim yellow]Note: Markdown export failed: {e}[/dim yellow]")
+
+        try:
+            from mentat.core.okf_transfer import save_database_memory_to_okf
+
+            if not save_database_memory_to_okf(db, memory_id, user_id):
+                console.print("[dim yellow]Note: OKF export failed[/dim yellow]")
+        except Exception as e:
+            console.print(f"[dim yellow]Note: OKF export failed: {e}[/dim yellow]")
         
         return memory_id
     except Exception as e:
@@ -1970,6 +1982,17 @@ def display_ai_search_results(results: List[Dict], query: str, last_displayed_it
 
 # Concept Exploration Command Handlers
 
+def _normalize_concept_argument(value: str) -> str:
+    """Remove shell-style outer quotes retained by the interactive command parser."""
+    normalized = value.strip()
+    if (
+        len(normalized) >= 2
+        and normalized[0] == normalized[-1]
+        and normalized[0] in {'"', "'"}
+    ):
+        return normalized[1:-1].strip()
+    return normalized
+
 def handle_explore_web_command(concept_or_number: str, user_id: str, db: MemoryDatabase, 
                               openrouter_client: Any, last_displayed_items: List[Dict], 
                               global_enhanced_chat: Any = None,
@@ -1989,6 +2012,8 @@ def handle_explore_web_command(concept_or_number: str, user_id: str, db: MemoryD
     try:
         from mentat.concepts.concept_integration import ConceptIntegrationManager
         from mentat.concepts.concept_display import render_interactive_concept_tree
+
+        concept_or_number = _normalize_concept_argument(concept_or_number)
         
         integration_manager = ConceptIntegrationManager(db, openrouter_client)
         
@@ -2031,7 +2056,7 @@ def handle_explore_web_command(concept_or_number: str, user_id: str, db: MemoryD
             f"[dim]ConceptExplorer provider: {concept_route.provider} • "
             f"model: {concept_route.model} ({concept_route.model_source}) • "
             f"depth={CONCEPT_EXPLORATION_DEFAULT_DEPTH}, "
-            f"max_concepts={CONCEPT_EXPLORATION_MAX_CONCEPTS}, "
+            f"max_children_per_concept={CONCEPT_EXPLORATION_MAX_CONCEPTS}, "
             f"batch={CONCEPT_EXPLORATION_BATCH_SIZE}[/dim]"
         )
         
@@ -2069,9 +2094,13 @@ def handle_explore_web_command(concept_or_number: str, user_id: str, db: MemoryD
             )
         
         console.print()  # Add spacing
-        formatted_concept_display = format_content_with_markdown(concept_display)
         from mentat.cli.display import create_standard_panel
-        concept_panel = create_standard_panel(formatted_concept_display, "🌳 Deep Concept Exploration", None, "bright_green")
+        concept_panel = create_standard_panel(
+            render_concept_tree_content(concept_display),
+            "🌳 Deep Concept Exploration",
+            None,
+            "bright_green",
+        )
         console.print(concept_panel)
         
         # Show knowledge analysis if available
@@ -2185,6 +2214,8 @@ def handle_explain_command(concept_or_number: str, user_id: str, db: MemoryDatab
     """
     try:
         from mentat.concepts.concept_integration import ConceptIntegrationManager
+
+        concept_or_number = _normalize_concept_argument(concept_or_number)
         
         integration_manager = ConceptIntegrationManager(db, openrouter_client)
         
@@ -2218,7 +2249,9 @@ def handle_explain_command(concept_or_number: str, user_id: str, db: MemoryDatab
         # Generate comprehensive concept explanation
         with show_thinking_spinner("📖 Researching and analyzing concept..."):
             explanation = integration_manager.generate_concept_explanation(
-                concept_name, user_id, "gpt-4o-mini"  # Use current model from context
+                concept_name,
+                user_id,
+                get_current_model(),
             )
         
         # Display the explanation with enhanced markdown rendering

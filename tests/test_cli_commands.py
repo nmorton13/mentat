@@ -269,6 +269,29 @@ def test_extract_agent_flags_leaves_existing_args_alone():
     assert flags == mentat.AgentFlags()
 
 
+def test_extract_agent_flags_accepts_import_dry_run():
+    argv, flags = mentat.extract_agent_flags([
+        "import", "markdown", "notes", "--dry-run", "--json"
+    ])
+
+    assert argv == ["import", "markdown", "notes"]
+    assert flags == mentat.AgentFlags(json_output=True, dry_run=True)
+
+
+def test_parse_transfer_args_accepts_path_with_spaces():
+    transfer_format, path = mentat.parse_transfer_args([
+        "markdown", "/tmp/My", "Journal"
+    ])
+
+    assert transfer_format == "markdown"
+    assert path == "/tmp/My Journal"
+
+
+def test_parse_transfer_args_rejects_unknown_format():
+    with pytest.raises(ValueError, match="Unsupported transfer format"):
+        mentat.parse_transfer_args(["notes", "/tmp/archive"])
+
+
 def test_handle_latest_uses_requested_limit(monkeypatch):
     dummy_db = DummyDB()
     monkeypatch.setattr(commands, "print_tool_reply", lambda *args, **kwargs: None)
@@ -658,6 +681,12 @@ def test_main_dispatches_explore(monkeypatch):
     assert captured == {"concept": "machine learning", "user_id": "u1", "interactive": False}
 
 
+def test_normalize_concept_argument_removes_only_matching_outer_quotes():
+    assert commands._normalize_concept_argument('"open source"') == "open source"
+    assert commands._normalize_concept_argument("'open source'") == "open source"
+    assert commands._normalize_concept_argument('open "source"') == 'open "source"'
+
+
 def test_main_dispatches_explain(monkeypatch):
     captured = {}
 
@@ -788,6 +817,7 @@ def test_handle_explain_resolves_last_displayed_deep_concept(monkeypatch):
         FakeIntegrationManager,
     )
     monkeypatch.setattr(commands, "show_thinking_spinner", _noop_spinner)
+    monkeypatch.setattr(commands, "get_current_model", lambda: "gemma4:12b-mlx")
     monkeypatch.setattr(commands.console, "print", lambda *args, **kwargs: None)
 
     last_displayed_items = [
@@ -809,7 +839,7 @@ def test_handle_explain_resolves_last_displayed_deep_concept(monkeypatch):
 
     assert captured["concept"] == "Data Bias"
     assert captured["user_id"] == "u1"
-    assert captured["model"] == "gpt-4o-mini"
+    assert captured["model"] == "gemma4:12b-mlx"
 
 
 def test_cli_reference_explanation_uses_online_wrapper(monkeypatch):

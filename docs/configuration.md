@@ -24,6 +24,9 @@ OPENROUTER_API_KEY=your_openrouter_key
 
 # Optional: OpenAI-only features such as OpenAI realtime voice or direct OpenAI routing
 OPENAI_API_KEY=your_openai_key
+
+# Optional: named Venice AI chat/helper routing
+VENICE_API_KEY=your_venice_key
 ```
 
 Mentat uses OpenRouter for most hosted LLM chat/capture flows. Semantic embeddings are local sentence-transformers by default, so no API key is required for embeddings.
@@ -64,6 +67,19 @@ OLLAMA_THINK=false
 
 The Ollama route uses Ollama's native `/api/chat` endpoint. Use `CHAT_*` or `LOCAL_*` only for OpenAI-compatible local servers.
 
+To use Venice as a named hosted route, configure it through `mentat config init`
+or set:
+
+```env
+VENICE_API_KEY=your_venice_key
+VENICE_BASE_URL=https://api.venice.ai/api/v1
+VENICE_MODEL=venice-uncensored
+```
+
+Select it with `/model venice` or `/model venice <model>`. Venice uses its
+OpenAI-compatible chat-completions endpoint. This release does not expose
+Venice-specific image, audio, or character APIs.
+
 ## Per-Feature LLM Routing
 
 Some features can use their own provider/model instead of always following normal chat. This is useful when normal chat is local but a structured task needs a reliable OpenRouter model, or when a privacy-sensitive feature should stay local.
@@ -76,6 +92,7 @@ Supported providers:
 - `openrouter` — use `OPENROUTER_API_KEY` + `OPENROUTER_BASE_URL` and the feature model or `OPENROUTER_MODEL`.
 - `local` — use `LOCAL_BASE_URL`/`LOCAL_API_KEY` and the feature model or `LOCAL_MODEL`.
 - `ollama` — use native Ollama `/api/chat` with the feature model or `OLLAMA_MODEL`.
+- `venice` — use `VENICE_API_KEY`/`VENICE_BASE_URL` and the feature model or `VENICE_MODEL`.
 - `custom` — use feature-specific `<FEATURE>_BASE_URL`, `<FEATURE>_API_KEY`, and `<FEATURE>_MODEL`.
 
 When a task provider is blank, Mentat falls back to `HELPERS_PROVIDER`/`HELPERS_MODEL` if set, then to `chat`.
@@ -102,6 +119,8 @@ Common `/model` forms:
 /model local qwen-local               # configured local endpoint with explicit model
 /model ollama                         # configured native Ollama route/model
 /model ollama llama3.2                # native Ollama route with explicit model
+/model venice                         # configured Venice route/model
+/model venice venice-uncensored       # Venice with explicit model
 ```
 
 The active route is saved in `data/runtime_settings.json`:
@@ -134,7 +153,7 @@ CONCEPT_EXPLORATION_DEFAULT_DEPTH=2
 CONCEPT_EXPLORATION_MAX_CONCEPTS=4
 ```
 
-If `CONCEPT_EXPLORATION_PROVIDER` is unset, it follows `HELPERS_PROVIDER`/`HELPERS_MODEL` when those shared helper defaults are set. Otherwise, it behaves as `chat` and follows the active model shown in the Mentat prompt. `/explore` prints the resolved provider, model, depth, max concepts, and batch size before building the tree.
+If `CONCEPT_EXPLORATION_PROVIDER` is unset, it follows `HELPERS_PROVIDER`/`HELPERS_MODEL` when those shared helper defaults are set. Otherwise, it behaves as `chat` and follows the active model shown in the Mentat prompt. `/explore` prints the resolved provider, model, configured depth, maximum children per concept, and batch size before building the tree.
 
 Example: normal chat local, helper tasks through OpenRouter:
 
@@ -251,15 +270,27 @@ DATABASE_CHECK_SAME_THREAD=false
 
 Relative `DATABASE_PATH` values are resolved from the project root.
 
-## Markdown Export
+## Journal Markdown And OKF Export
 
 ```env
 MARKDOWN_EXPORT_ENABLED=true
 MARKDOWN_EXPORT_PATH=data/markdown
+OKF_EXPORT_ENABLED=false
+OKF_EXPORT_PATH=data/okf
+OKF_EXPORT_ACTOR=human:your-name
 ```
 
-Markdown exports are human-readable backups of captured memories and can be read by tools like Obsidian.
-Relative `MARKDOWN_EXPORT_PATH` values are resolved from the project root.
+Journal Markdown is the default human-readable, dated archive and works well
+with tools such as Obsidian. OKF export is opt-in and writes one conforming
+Open Knowledge Format v0.2 concept per memory. Both can be enabled together.
+
+Personal actor identities belong in the ignored local `.env`; the public
+configuration does not contain one. When `OKF_EXPORT_ACTOR` is unset, Mentat
+uses its versioned application identity.
+
+Relative export paths are resolved from the project root. See
+[Export, Import, and Interchange](interchange.md) for manual snapshot commands,
+import behavior, and the differences between the formats.
 
 ## Voice
 

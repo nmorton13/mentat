@@ -126,7 +126,8 @@ class MemoryDatabase:
         user_id: str, 
         command_type: str, 
         tags: Optional[List[str]] = None, 
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        timestamp: Optional[str] = None,
     ) -> Optional[int]:
         """
         Save a memory to the database with tags and metadata.
@@ -142,6 +143,8 @@ class MemoryDatabase:
                 Defaults to None if no tags provided.
             metadata (Optional[Dict[str, Any]]): Additional structured data like entities,
                 actionable items, confidence scores, etc. Defaults to None.
+            timestamp (Optional[str]): Original capture timestamp for archive imports.
+                Defaults to the database insertion time.
         
         Returns:
             Optional[int]: Database ID of the saved memory, or None if save operation failed
@@ -152,10 +155,31 @@ class MemoryDatabase:
                 cursor = conn.cursor()
                 inserted = False
                 try:
-                    cursor.execute('''
-                        INSERT INTO memories (user_id, content, command_type, tags, metadata)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (user_id, content, command_type, json.dumps(tags) if tags else None, json.dumps(metadata) if metadata else None))
+                    if timestamp:
+                        cursor.execute('''
+                            INSERT INTO memories (
+                                user_id, content, command_type, tags, metadata, timestamp
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        ''', (
+                            user_id,
+                            content,
+                            command_type,
+                            json.dumps(tags) if tags else None,
+                            json.dumps(metadata) if metadata else None,
+                            timestamp,
+                        ))
+                    else:
+                        cursor.execute('''
+                            INSERT INTO memories (user_id, content, command_type, tags, metadata)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (
+                            user_id,
+                            content,
+                            command_type,
+                            json.dumps(tags) if tags else None,
+                            json.dumps(metadata) if metadata else None,
+                        ))
                     memory_id = cursor.lastrowid
                     inserted = True
                 except sqlite3.IntegrityError as e:
@@ -176,6 +200,57 @@ class MemoryDatabase:
             return memory_id
         except Exception as e:
             raise Exception(f"Error saving to database: {e}")
+
+    def find_memory_id(self, content: str, user_id: str, command_type: str) -> Optional[int]:
+        """Return the durable ID for an existing exact memory, if present."""
+        with self.db_pool.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                SELECT id FROM memories
+                WHERE user_id = ? AND content = ? AND command_type = ?
+                ''',
+                (user_id, content, command_type),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def get_memories_for_export(self, user_id: str) -> List[Dict[str, Any]]:
+        """Return every memory for a user in deterministic archive order."""
+        with self.db_pool.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                SELECT id, content, command_type, tags, timestamp, metadata
+                FROM memories
+                WHERE user_id = ?
+                ORDER BY timestamp ASC, id ASC
+                ''',
+                (user_id,),
+            )
+            memories = []
+            for memory_id, content, command_type, tags, timestamp, metadata in cursor.fetchall():
+                try:
+                    tags_list = json.loads(tags) if tags else []
+                except (TypeError, json.JSONDecodeError):
+                    tags_list = []
+                if not isinstance(tags_list, list):
+                    tags_list = []
+                try:
+                    metadata_dict = json.loads(metadata) if metadata else {}
+                except (TypeError, json.JSONDecodeError):
+                    metadata_dict = {}
+                if not isinstance(metadata_dict, dict):
+                    metadata_dict = {}
+                memories.append({
+                    "id": memory_id,
+                    "content": content,
+                    "command_type": command_type,
+                    "tags": tags_list,
+                    "timestamp": timestamp,
+                    "metadata": metadata_dict,
+                })
+            return memories
     
     def save_embedding(self, memory_id, embedding):
         """Save an embedding for a memory"""

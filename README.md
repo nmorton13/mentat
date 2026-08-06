@@ -49,7 +49,9 @@ for a review-first workflow.
 - Natural language temporal search such as "what was I thinking about last week?"
 - Context-aware CLI chat over your memory corpus
 - Voice sessions through the CLI `/voice` command
-- Markdown export for human-readable, Obsidian-friendly archives
+- Journal Markdown v1 export/import for human-readable, Obsidian-friendly archives
+- Open Knowledge Format (OKF) v0.2 export/import for portable knowledge bundles
+- Named OpenRouter, Venice AI, local OpenAI-compatible, and native Ollama routes
 
 ## Install
 
@@ -70,11 +72,11 @@ uv run mentat config init
 ```
 
 The setup command creates or safely updates `.env`, configures OpenRouter,
-Ollama, or another OpenAI-compatible endpoint, and activates the selected
+Venice AI, Ollama, or another OpenAI-compatible endpoint, and activates the selected
 model route. Run it again later to change the basic setup. Advanced settings
 can still be edited directly in `.env`.
 
-The `0.8.x` release supports this clone-and-run source workflow. Portable wheel
+The `0.9.x` release supports this clone-and-run source workflow. Portable wheel
 installation and platform-specific user data directories are planned for a
 later pre-1.0 release.
 
@@ -109,7 +111,7 @@ Additional ways to work with selected memories:
 - `/todo` - show extracted actionable items
 - `/tag <tags>` - search by tags
 - `/delete <number>` - remove a numbered result after confirmation
-- `/model` - inspect/switch chat routes and models (`/model 1`, `/model local`, `/model ollama`, `/model openrouter <id>`)
+- `/model` - inspect/switch chat routes and models (`/model 1`, `/model local`, `/model ollama`, `/model venice`, `/model openrouter <id>`)
 - `/summary [days]` - generate an activity summary
 - `/synthesize <topic>` - combine related notes into a structured synthesis
 - `/save` - capture a valuable AI response as a memory
@@ -129,6 +131,10 @@ uv run mentat capture -
 uv run mentat view 123
 uv run mentat delete 123 --yes
 uv run mentat mark todo_abc123
+uv run mentat export markdown /path/to/journal
+uv run mentat export okf /path/to/bundle
+uv run mentat import markdown /path/to/journal --dry-run
+uv run mentat import okf /path/to/bundle --dry-run
 uv run mentat config show
 uv run mentat config doctor
 ```
@@ -148,8 +154,8 @@ own beliefs.
 
 ## Local-First And Privacy
 
-Memories, embeddings, runtime settings, and Markdown exports are stored locally.
-When you choose OpenRouter, OpenAI, xAI, or another hosted endpoint, the content
+Memories, embeddings, runtime settings, and exports are stored locally.
+When you choose OpenRouter, Venice AI, OpenAI, xAI, or another hosted endpoint, the content
 needed for that request is sent to that provider. Chat requests may include
 retrieved memories as context. Use Ollama or another local endpoint for routes
 that should remain on your machine, and inspect effective routing with
@@ -157,12 +163,15 @@ that should remain on your machine, and inspect effective routing with
 
 ## Data
 
-Mentat stores memories in SQLite and can export captured content to Markdown files under `data/markdown/`. Local data directories are not required for a fresh install and should be treated as personal runtime data rather than project source.
+Mentat stores memories in SQLite. Journal exports default to `data/markdown/`,
+and opt-in OKF bundles default to `data/okf/`. Both are personal runtime data,
+not project source.
 
 ## Documentation
 
 - [Command Reference](docs/commands.md)
 - [Configuration Guide](docs/configuration.md)
+- [Export, Import, and Interchange](docs/interchange.md)
 - [Tools & Capabilities](docs/tools.md)
 - [Temporal Search](docs/temporal-search.md)
 - [Workflows & Examples](docs/examples.md)

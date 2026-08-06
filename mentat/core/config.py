@@ -141,6 +141,16 @@ OLLAMA_TOP_P = os.getenv("OLLAMA_TOP_P", "").strip() or None
 OLLAMA_TOP_K = os.getenv("OLLAMA_TOP_K", "").strip() or None
 OLLAMA_NUM_PREDICT = os.getenv("OLLAMA_NUM_PREDICT", "").strip() or None
 
+# Venice uses an OpenAI-compatible chat completions endpoint.
+VENICE_API_KEY = os.getenv("VENICE_API_KEY", "").strip() or None
+VENICE_BASE_URL = (
+    os.getenv("VENICE_BASE_URL", "https://api.venice.ai/api/v1")
+    .strip()
+    .rstrip("/")
+    or "https://api.venice.ai/api/v1"
+)
+VENICE_MODEL = os.getenv("VENICE_MODEL", "").strip() or None
+
 # Shared local OpenAI-compatible provider settings for per-feature routing.
 # Set in .env as: LOCAL_BASE_URL=http://localhost:1234/v1
 LOCAL_BASE_URL = os.getenv("LOCAL_BASE_URL", "").strip() or None
@@ -212,7 +222,9 @@ def _runtime_chat_provider() -> Optional[str]:
     if not isinstance(provider, str):
         return None
     provider = provider.strip().lower()
-    return provider if provider in {"openrouter", "local", "custom", "ollama"} else None
+    return provider if provider in {
+        "openrouter", "local", "custom", "ollama", "venice"
+    } else None
 
 
 def get_chat_provider() -> str:
@@ -240,6 +252,8 @@ def get_chat_base_url() -> str:
         return LOCAL_BASE_URL or CHAT_BASE_URL or "http://localhost:1234/v1"
     if provider == "ollama":
         return OLLAMA_BASE_URL
+    if provider == "venice":
+        return VENICE_BASE_URL
     return CHAT_BASE_URL or OPENROUTER_BASE_URL
 
 
@@ -252,6 +266,8 @@ def get_chat_api_key() -> Optional[str]:
         return CHAT_API_KEY or LOCAL_API_KEY or "local"
     if provider == "ollama":
         return None
+    if provider == "venice":
+        return VENICE_API_KEY
     if CHAT_API_KEY:
         return CHAT_API_KEY
     if CHAT_BASE_URL:
@@ -558,6 +574,16 @@ if not os.path.isabs(_markdown_export_path):
 else:
     MARKDOWN_EXPORT_PATH = _markdown_export_path
 
+# Open Knowledge Format export is separate and opt-in. Personal actor values
+# belong in the ignored local .env, never in repository defaults.
+OKF_EXPORT_ENABLED = os.getenv("OKF_EXPORT_ENABLED", "false").lower() == "true"
+_okf_export_path = os.getenv("OKF_EXPORT_PATH", "data/okf")
+if not os.path.isabs(_okf_export_path):
+    OKF_EXPORT_PATH = os.path.join(_project_root, _okf_export_path)
+else:
+    OKF_EXPORT_PATH = _okf_export_path
+OKF_EXPORT_ACTOR = os.getenv("OKF_EXPORT_ACTOR", "").strip() or None
+
 # =============================================================================
 # LLM REQUEST CONFIGURATION
 # =============================================================================
@@ -615,12 +641,12 @@ STRONG_SEMANTIC_SIMILARITY_THRESHOLD = float(os.getenv("STRONG_SEMANTIC_SIMILARI
 # Settings for the ConceptExplorer system (/explore command)
 # These control how concepts are discovered and presented
 CONCEPT_EXPLORATION_DEFAULT_DEPTH = int(os.getenv("CONCEPT_EXPLORATION_DEFAULT_DEPTH", "3"))  # Exploration depth
-CONCEPT_EXPLORATION_MAX_CONCEPTS = int(os.getenv("CONCEPT_EXPLORATION_MAX_CONCEPTS", "4"))    # Max concepts per level
+CONCEPT_EXPLORATION_MAX_CONCEPTS = int(os.getenv("CONCEPT_EXPLORATION_MAX_CONCEPTS", "4"))    # Max children per concept
 CONCEPT_DIVERSITY_BIAS = float(os.getenv("CONCEPT_DIVERSITY_BIAS", "0.8"))                   # Diversity vs similarity (0-1)
 CONCEPT_NOVELTY_THRESHOLD = float(os.getenv("CONCEPT_NOVELTY_THRESHOLD", "0.3"))              # Novelty detection threshold
 CONCEPT_WEB_DISPLAY_LIMIT = int(os.getenv("CONCEPT_WEB_DISPLAY_LIMIT", "182"))               # Max concept web display
 CONCEPT_EXPLORATION_BATCH_SIZE = int(os.getenv("CONCEPT_EXPLORATION_BATCH_SIZE", "4"))        # Parent concepts per LLM batch
-CONCEPT_EXPLORATION_PROVIDER = os.getenv("CONCEPT_EXPLORATION_PROVIDER", "").strip().lower() or HELPERS_PROVIDER or "chat"  # chat/openrouter/local/ollama/custom
+CONCEPT_EXPLORATION_PROVIDER = os.getenv("CONCEPT_EXPLORATION_PROVIDER", "").strip().lower() or HELPERS_PROVIDER or "chat"  # chat/openrouter/local/ollama/venice/custom
 CONCEPT_EXPLORATION_MODEL = os.getenv("CONCEPT_EXPLORATION_MODEL", "").strip() or HELPERS_MODEL       # Optional model override for concept generation
 
 # Entity extraction model routing. Defaults to HELPERS_* then chat provider/current model unless overridden.
@@ -789,6 +815,8 @@ def get_current_model():
         return CHAT_MODEL or LOCAL_MODEL or OPENROUTER_MODEL
     if provider == "ollama":
         return OLLAMA_MODEL or CHAT_MODEL or OPENROUTER_MODEL
+    if provider == "venice":
+        return VENICE_MODEL or CHAT_MODEL or OPENROUTER_MODEL
     return CHAT_MODEL or OPENROUTER_MODEL
 
 
@@ -824,13 +852,15 @@ def set_current_model(model_id):
 def set_chat_route(provider: str, model_id: str) -> bool:
     """Persist the active normal-chat provider and model.
 
-    `provider` is one of openrouter/local/custom/ollama. The model can be any
+    `provider` is one of openrouter/local/custom/ollama/venice. The model can be any
     non-empty string because OpenRouter pasted IDs and local/Ollama aliases are
     not always present in config/models.json.
     """
     global OPENROUTER_MODEL
     normalized_provider = (provider or "").strip().lower()
-    if normalized_provider not in {"openrouter", "local", "custom", "ollama"}:
+    if normalized_provider not in {
+        "openrouter", "local", "custom", "ollama", "venice"
+    }:
         return False
     if not isinstance(model_id, str) or not model_id.strip():
         return False

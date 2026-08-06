@@ -16,6 +16,8 @@ import sys
 import os
 
 from mentat.core.database import MemoryDatabase
+from mentat.core.journal_transfer import export_journal, import_journal
+from mentat.core.okf_transfer import export_okf, import_okf
 from mentat.core.ai import (
     analyze_capture_content, analyze_thoughts,
     generate_weekly_summary,
@@ -166,6 +168,7 @@ class AgentFlags:
 
     json_output: bool = False
     yes: bool = False
+    dry_run: bool = False
 
 def update_ai_response_state(response, command, prompt=None):
     """Update global AI response state for saving"""
@@ -189,16 +192,36 @@ def extract_agent_flags(argv):
     cleaned = []
     json_output = False
     yes = False
+    dry_run = False
 
     for arg in argv:
         if arg == "--json":
             json_output = True
         elif arg == "--yes":
             yes = True
+        elif arg == "--dry-run":
+            dry_run = True
         else:
             cleaned.append(arg)
 
-    return cleaned, AgentFlags(json_output=json_output, yes=yes)
+    return cleaned, AgentFlags(
+        json_output=json_output,
+        yes=yes,
+        dry_run=dry_run,
+    )
+
+
+def parse_transfer_args(content_parts):
+    """Return the requested transfer format and path."""
+    if not content_parts or len(content_parts) < 2:
+        raise ValueError("Format and path required ((markdown|okf) <path>)")
+    transfer_format = content_parts[0].strip().lower()
+    if transfer_format not in {"markdown", "okf"}:
+        raise ValueError(f"Unsupported transfer format: {transfer_format}")
+    path = " ".join(content_parts[1:]).strip()
+    if not path:
+        raise ValueError("Transfer path required")
+    return transfer_format, path
 
 
 def _metadata_payload(metadata):
@@ -461,6 +484,28 @@ def handle_model_command(arg):
             if switch_successful:
                 _save_openrouter_model_if_missing(model_id)
 
+        elif parts and parts[0].lower() == "venice":
+            from mentat.core import config as core_config
+
+            venice_model = " ".join(parts[1:]).strip() or core_config.VENICE_MODEL
+            if not core_config.VENICE_API_KEY:
+                console.print(
+                    "[red]❌ No Venice API key configured. "
+                    "Set VENICE_API_KEY or run `mentat config init`.[/red]"
+                )
+                return
+            if not venice_model:
+                console.print(
+                    "[red]❌ No Venice model configured. Set VENICE_MODEL, "
+                    "or run /model venice <model>.[/red]"
+                )
+                return
+            switch_successful = _switch_chat_route(
+                "venice",
+                venice_model,
+                f"[green]✅ Chat route switched to Venice: {venice_model}[/green]",
+            )
+
         elif stripped_arg.isdigit():
             model_to_switch = get_model_by_number(stripped_arg)
             if model_to_switch:
@@ -493,7 +538,11 @@ def handle_model_command(arg):
                 switch_successful = True
             else:
                 console.print(f"[red]❌ Unknown model: {stripped_arg}[/red]")
-                console.print(f"[yellow]💡 Try /model <number>, /model local, /model ollama <model>, or /model openrouter <provider/model-id>[/yellow]")
+                console.print(
+                    "[yellow]💡 Try /model <number>, /model local, "
+                    "/model ollama <model>, /model venice <model>, or "
+                    "/model openrouter <provider/model-id>[/yellow]"
+                )
 
         if switch_successful:
             console.print()
@@ -1153,13 +1202,13 @@ The /capture command intelligently analyzes and categorizes your content!
     try:
         release_version = version("mentat")
     except PackageNotFoundError:
-        release_version = "0.8.0"
+        release_version = "0.9.0"
     parser.add_argument('--version', action='version', version=f'Mentat {release_version}')
 
     parser.add_argument('command', nargs='?', default=None, choices=[
         'capture', 'chat', 'search', 'links', 'link', 'latest', 'summary',
         'project', 'tag', 'todo', 'model', 'synthesize', 'explore', 'explain',
-        'connect', 'view', 'delete', 'mark', 'config'
+        'connect', 'view', 'delete', 'mark', 'config', 'export', 'import'
     ], help='Command to execute')
 
     parser.add_argument('content', nargs='*', help='Content for the command')
@@ -1170,12 +1219,15 @@ The /capture command intelligently analyzes and categorizes your content!
 
     args = parser.parse_args(argv)
 
-    json_supported_commands = {"chat", "search", "latest", "links", "todo"}
+    json_supported_commands = {
+        "chat", "search", "latest", "links", "todo", "export", "import"
+    }
 
     if agent_flags.json_output and args.command not in json_supported_commands:
         json_error(
             args.command or "interactive",
-            "--json is only supported for chat, search, latest, links, and todo",
+            "--json is only supported for chat, search, latest, links, todo, "
+            "export, and import",
             "unsupported_json_command",
         )
         sys.exit(1)
@@ -1189,6 +1241,17 @@ The /capture command intelligently analyzes and categorizes your content!
             )
         else:
             console.print("[red]❌ --yes is only supported for delete[/red]")
+        sys.exit(1)
+
+    if agent_flags.dry_run and args.command != "import":
+        if agent_flags.json_output:
+            json_error(
+                args.command or "interactive",
+                "--dry-run is only supported for import",
+                "unsupported_dry_run",
+            )
+        else:
+            console.print("[red]❌ --dry-run is only supported for import[/red]")
         sys.exit(1)
 
     if args.command == "config":
@@ -1440,6 +1503,45 @@ The /capture command intelligently analyzes and categorizes your content!
                 sys.exit(1)
             from .commands import handle_connect_command
             handle_connect_command(concepts[0], concepts[1], args.user, openrouter_client, db, current_model)
+
+        elif args.command == 'export':
+            transfer_format, transfer_path = parse_transfer_args(args.content)
+            result = (
+                export_journal(db, args.user, transfer_path)
+                if transfer_format == "markdown"
+                else export_okf(db, args.user, transfer_path)
+            )
+            if agent_flags.json_output:
+                print_json_response("export", result.to_dict())
+            else:
+                console.print(
+                    f"[green]✓ Exported {result.exported} memories to "
+                    f"{result.destination}[/green]"
+                )
+
+        elif args.command == 'import':
+            transfer_format, transfer_path = parse_transfer_args(args.content)
+            import_function = (
+                import_journal if transfer_format == "markdown" else import_okf
+            )
+            result = import_function(
+                db,
+                args.user,
+                transfer_path,
+                dry_run=agent_flags.dry_run,
+                embedding_generator=(
+                    None if agent_flags.dry_run else get_embedding_for_content
+                ),
+            )
+            if agent_flags.json_output:
+                print_json_response("import", result.to_dict())
+            else:
+                prefix = "Would import" if result.dry_run else "Imported"
+                console.print(
+                    f"[green]✓ {prefix} {result.imported} memories "
+                    f"({result.duplicates} duplicates, {result.skipped} skipped, "
+                    f"{result.errors} errors)[/green]"
+                )
             
     except KeyboardInterrupt:
         if agent_flags.json_output:
