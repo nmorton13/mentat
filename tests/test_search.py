@@ -147,6 +147,44 @@ def test_hybrid_search_returns_keyword_result(tmp_path):
     assert results[0]["content"] == "Hybrid keyword match"
 
 
+def test_hybrid_search_reuses_keyword_records_and_deduplicates_by_id():
+    from mentat.chat.enhanced_chat import EnhancedChatSystem
+
+    class KeywordOnlyDB:
+        def safe_memory_search(self, query, user_id):
+            assert query == "shared"
+            assert user_id == "u1"
+            return [
+                {
+                    "id": 11,
+                    "content": "Shared content",
+                    "command_type": "note",
+                    "tags": ["first"],
+                    "metadata": '{"source": {"type": "capture"}}',
+                    "timestamp": "2026-01-01",
+                    "why_matched": "Keyword match in content",
+                },
+                {
+                    "id": 12,
+                    "content": "Shared content",
+                    "command_type": "reflection",
+                    "tags": ["second"],
+                    "metadata": None,
+                    "timestamp": "2026-01-02",
+                    "why_matched": "Keyword match in content",
+                },
+            ]
+
+    chat = EnhancedChatSystem(KeywordOnlyDB(), openrouter_client=None)
+    chat.openai_client = None
+
+    results = chat._hybrid_search("u1", "shared", k=5)
+
+    assert [result["id"] for result in results] == [11, 12]
+    assert results[0]["user_id"] == "u1"
+    assert results[0]["metadata"] == '{"source": {"type": "capture"}}'
+
+
 def test_hybrid_search_marks_keyword_duplicate(monkeypatch, tmp_path):
     from mentat.chat import enhanced_chat
 

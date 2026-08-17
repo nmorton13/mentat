@@ -122,8 +122,19 @@ class EnhancedChatSystem:
             HYBRID_SEARCH_INTERNAL_MULTIPLIER: How many extra candidates to fetch (default 2.0)
             KEYWORD_MATCH_BASELINE_SCORE: Similarity score assigned to keyword matches (default 0.4)
         """
-        all_results = []
-        seen_ids = set()
+        results_by_key = {}
+
+        def _result_key(result: Dict) -> Tuple[Any, ...]:
+            """Use durable IDs when available, with a stable legacy fallback."""
+            memory_id = result.get('id')
+            if memory_id is not None:
+                return ('id', memory_id)
+            return (
+                'legacy',
+                result.get('content'),
+                result.get('timestamp'),
+                result.get('command_type'),
+            )
 
         # Calculate internal search limit (fetch more candidates for better ranking)
         internal_k = int(k * internal_multiplier)
@@ -141,9 +152,10 @@ class EnhancedChatSystem:
                     if mem_ids:
                         # Convert to enhanced chat format with similarity scores
                         t0 = time.perf_counter()
+                        similarity_by_id = dict(mem_ids)
                         with self.db.db_pool.get_connection() as conn:
                             cursor = conn.cursor()
-                            memory_ids_only = [mem_id for mem_id, similarity in mem_ids]
+                            memory_ids_only = list(similarity_by_id)
                             placeholders = ','.join(['?'] * len(memory_ids_only))
 
                             cursor.execute(f"""
@@ -154,23 +166,21 @@ class EnhancedChatSystem:
 
                             for row in cursor.fetchall():
                                 mem_id = row[0]
-                                if mem_id not in seen_ids:
-                                    similarity = next((sim for mid, sim in mem_ids if mid == mem_id), 0.0)
-                                    result = {
-                                        'id': mem_id,
-                                        'user_id': row[1],
-                                        'content': row[2],
-                                        'command_type': row[3],
-                                        'tags': json.loads(row[4]) if row[4] else [],
-                                        'metadata': row[5],
-                                        'timestamp': row[6],
-                                        'why_matched': f"Semantic similarity (score: {similarity:.2f})",
-                                        '_search_score': similarity  # Internal score for ranking
-                                    }
-                                    if self._is_ai_derived_memory(result):
-                                        continue
-                                    all_results.append(result)
-                                    seen_ids.add(mem_id)
+                                similarity = similarity_by_id.get(mem_id, 0.0)
+                                result = {
+                                    'id': mem_id,
+                                    'user_id': row[1],
+                                    'content': row[2],
+                                    'command_type': row[3],
+                                    'tags': json.loads(row[4]) if row[4] else [],
+                                    'metadata': row[5],
+                                    'timestamp': row[6],
+                                    'why_matched': f"Semantic similarity (score: {similarity:.2f})",
+                                    '_search_score': similarity  # Internal score for ranking
+                                }
+                                if self._is_ai_derived_memory(result):
+                                    continue
+                                results_by_key[_result_key(result)] = result
                         _debug_timing(f"hybrid.semantic_fetch: {(time.perf_counter() - t0):.2f}s")
             except Exception as e:
                 _debug_timing(f"hybrid.semantic_error: {type(e).__name__}: {e}")
@@ -183,57 +193,38 @@ class EnhancedChatSystem:
             _debug_timing(f"hybrid.keyword_search: {(time.perf_counter() - t0):.2f}s results={len(keyword_results)}")
             t0 = time.perf_counter()
             for result in keyword_results[:15]:  # Allow more keyword candidates
-                # safe_memory_search returns dicts without 'id', need to get it from DB
-                content = result.get('content', '')
+                result_key = _result_key(result)
+                existing = results_by_key.get(result_key)
+                if existing:
+                    # Boost semantic matches when the same memory also matches keywords.
+                    current_score = existing.get('_search_score', 0.0)
+                    if KEYWORD_MATCH_BASELINE_SCORE > current_score:
+                        existing['_search_score'] = KEYWORD_MATCH_BASELINE_SCORE
+                    if "Keyword match" not in existing.get('why_matched', ''):
+                        existing['why_matched'] = f"{existing['why_matched']} + Keyword match"
+                    continue
 
-                # Check if we've seen this content already (deduplicate)
-                is_duplicate = False
-                for existing in all_results:
-                    if existing.get('content') == content:
-                        # Found duplicate! Boost its score if keyword baseline is higher
-                        current_score = existing.get('_search_score', 0.0)
-                        if KEYWORD_MATCH_BASELINE_SCORE > current_score:
-                            existing['_search_score'] = KEYWORD_MATCH_BASELINE_SCORE
-                        # Update why_matched to show it's also a keyword match
-                        if "Keyword match" not in existing.get('why_matched', ''):
-                            existing['why_matched'] = f"{existing['why_matched']} + Keyword match"
-                        is_duplicate = True
-                        break
-
-                if not is_duplicate:
-                    # Fetch the memory id and metadata from database
-                    with self.db.db_pool.get_connection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            SELECT id, user_id, metadata
-                            FROM memories
-                            WHERE user_id = ? AND content = ?
-                            LIMIT 1
-                        """, [user_id, content])
-                        row = cursor.fetchone()
-                        if row:
-                            # Add complete result with baseline score for ranking
-                            complete_result = {
-                                'id': row[0],
-                                'user_id': row[1],
-                                'content': content,
-                                'command_type': result.get('command_type'),
-                                'tags': result.get('tags', []),
-                                'metadata': row[2],
-                                'timestamp': result.get('timestamp'),
-                                'why_matched': result.get('why_matched', 'Keyword match'),
-                                '_search_score': KEYWORD_MATCH_BASELINE_SCORE  # Baseline score for keywords
-                            }
-                            if self._is_ai_derived_memory(complete_result):
-                                continue
-                            all_results.append(complete_result)
-            _debug_timing(f"hybrid.keyword_hydrate: {(time.perf_counter() - t0):.2f}s")
+                complete_result = dict(result)
+                complete_result.setdefault('user_id', user_id)
+                complete_result.setdefault('tags', [])
+                complete_result.setdefault('metadata', None)
+                complete_result.setdefault('timestamp', None)
+                complete_result.setdefault('why_matched', 'Keyword match')
+                complete_result['_search_score'] = KEYWORD_MATCH_BASELINE_SCORE
+                if self._is_ai_derived_memory(complete_result):
+                    continue
+                results_by_key[result_key] = complete_result
+            _debug_timing(f"hybrid.keyword_merge: {(time.perf_counter() - t0):.2f}s")
         except Exception as e:
             _debug_timing(f"hybrid.keyword_error: {type(e).__name__}: {e}")
             pass  # If keyword search fails, at least we have semantic results
 
         # Rank all results by search score (highest first)
-        all_results.sort(key=lambda r: r.get('_search_score', 0.0), reverse=True)
+        all_results = sorted(
+            results_by_key.values(),
+            key=lambda r: r.get('_search_score', 0.0),
+            reverse=True,
+        )
 
         # Remove internal scoring field and return top k results
         for result in all_results:
