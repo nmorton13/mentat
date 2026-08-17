@@ -2,6 +2,25 @@
 
 All notable changes to Mentat are documented here.
 
+## 0.9.2 - 2026-08-17
+
+### Changed
+
+- Made actionable-item capture selective: new memories create at most one
+  broader learning, inquiry, practice, experiment, or decision item, backed by
+  an exact quote from the user's words.
+- Stopped generating and displaying priority for newly captured actionable
+  items while retaining compatibility with existing item metadata, `/todo`,
+  `/mark`, filters, display numbers, statuses, and durable IDs.
+- Simplified hybrid-search result merging around durable memory IDs, reducing
+  redundant work while preserving keyword and semantic search behavior.
+
+### Fixed
+
+- Prevented tentative ideas, assistant suggestions, and routine project work
+  such as releases, screenshots, integrations, and implementation tasks from
+  being promoted into actionable items.
+
 ## 0.9.1 - 2026-08-06
 
 ### Added

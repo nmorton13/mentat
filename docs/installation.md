@@ -41,10 +41,10 @@ uv python install 3.12
 uv sync --python 3.12
 ```
 
-To install the exact 0.9.0 release rather than the moving `main` branch:
+To install the exact 0.9.2 release rather than the moving `main` branch:
 
 ```bash
-git clone --branch v0.9.0 --depth 1 https://github.com/nmorton13/mentat.git
+git clone --branch v0.9.2 --depth 1 https://github.com/nmorton13/mentat.git
 cd mentat
 uv python install 3.12
 uv sync --python 3.12
@@ -131,7 +131,7 @@ uv run mentat config doctor
 ```
 
 The first command should report Python 3.12.x, and the second should report
-Mentat 0.9.0. The doctor result depends on the provider or local server you
+Mentat 0.9.2. The doctor result depends on the provider or local server you
 selected.
 
 ## Troubleshooting
