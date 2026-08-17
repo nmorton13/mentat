@@ -540,10 +540,10 @@ def handle_capture(
         for item in analysis['actionable_items']:
             if isinstance(item, dict):
                 action = item.get('action', str(item))
-                priority = item.get('priority', 'medium')
                 time_sensitive = '⏰' if item.get('time_sensitive') else ''
+                kind = f" [{item['kind'].title()}]" if item.get('kind') else ''
                 project = f" (Project: {item['project']})" if item.get('project') else ''
-                results_text += f"• {action}{project} [{priority}]{time_sensitive}\n"
+                results_text += f"• {action}{project}{kind}{time_sensitive}\n"
                 if item.get('context'):
                     results_text += f"   💭 Context: {item['context']}\n"
                 if item.get('due_date'):
@@ -1648,6 +1648,7 @@ def handle_todo(user_id, search_term, db, status_filter=None, last_displayed_ite
                     'timestamp': todo.get('timestamp', ''),
                     'status': todo.get('status', 'pending'),
                     'priority': todo.get('priority', 'medium'),
+                    'kind': todo.get('kind', ''),
                     'project': todo.get('project', ''),
                     'original_todo': todo  # Keep reference to original todo data
                 }

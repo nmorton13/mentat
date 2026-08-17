@@ -56,6 +56,34 @@ def test_get_user_todos_backfills_persisted_todo_ids(tmp_path):
     assert updated_metadata["actionable_items"][0]["todo_id"] == todos[0]["todo_id"]
 
 
+def test_get_user_todos_preserves_selective_capture_metadata(tmp_path):
+    db_path = tmp_path / "mentat_todo.db"
+    db = MemoryDatabase(db_path=str(db_path))
+    evidence = "I want to understand how oral traditions preserve history"
+
+    db.save_memory(
+        evidence,
+        "u1",
+        "reflection",
+        metadata={
+            "actionable_items": [
+                {
+                    "action": "Study how oral traditions preserve history",
+                    "kind": "inquiry",
+                    "context": "Return to the question across cultures",
+                    "evidence": evidence,
+                }
+            ]
+        },
+    )
+
+    todo = db.get_user_todos("u1", status_filter=None)[0]
+
+    assert todo["kind"] == "inquiry"
+    assert todo["evidence"] == evidence
+    assert todo["priority"] == "medium"  # Legacy JSON compatibility remains.
+
+
 def test_update_todo_status_by_id_survives_reorder(tmp_path):
     db_path = tmp_path / "mentat_todo.db"
     db = MemoryDatabase(db_path=str(db_path))

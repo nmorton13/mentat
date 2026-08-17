@@ -128,6 +128,125 @@ def test_analyze_capture_content_parses_reasoning_when_content_empty(monkeypatch
     assert result["entities"]["technologies"] == ["Python"]
 
 
+def test_analyze_capture_content_keeps_one_supported_carry_forward(monkeypatch):
+    content = (
+        "I want to read Annie Dillard's The Writing Life. "
+        "I also want to experiment with audiobooks."
+    )
+    payload = {
+        "type": "reflection",
+        "urls": [],
+        "enhanced_content": content,
+        "summary": "Two possible learning practices.",
+        "themes": ["writing", "reading"],
+        "actionable_items": [
+            {
+                "action": "Read Annie Dillard's The Writing Life",
+                "kind": "learning",
+                "context": "Explore writing as a sustained practice",
+                "evidence": "I want to read Annie Dillard's The Writing Life",
+                "priority": "high",
+            },
+            {
+                "action": "Experiment with audiobooks",
+                "kind": "experiment",
+                "context": "Try a different reading format",
+                "evidence": "I also want to experiment with audiobooks",
+            },
+        ],
+        "confidence": 0.91,
+    }
+    client = CountingClient(json.dumps(payload))
+    monkeypatch.setattr(config, "CAPTURE_ANALYSIS_PROVIDER", "chat")
+    monkeypatch.setattr(config, "CAPTURE_ANALYSIS_MODEL", None)
+
+    result = ai.analyze_capture_content(content, model="fake-model", client=client)
+
+    assert result["actionable_items"] == [
+        {
+            "action": "Read Annie Dillard's The Writing Life",
+            "kind": "learning",
+            "context": "Explore writing as a sustained practice",
+            "evidence": "I want to read Annie Dillard's The Writing Life",
+        }
+    ]
+
+
+def test_capture_actionable_item_validation_rejects_unsupported_candidates():
+    content = "Prepare a GitHub-ready version of Mentat and polish the codebase."
+
+    assert ai._normalize_capture_actionable_items(
+        content,
+        [
+            {
+                "action": "Prepare a GitHub-ready version of Mentat",
+                "kind": "practice",
+                "evidence": "Prepare a GitHub-ready version of Mentat",
+            },
+            {
+                "action": "Polish the codebase",
+                "kind": "practice",
+                "evidence": "This quote was not in the capture",
+            },
+            {
+                "action": "Reconsider the Telegram integration",
+                "kind": "decision",
+                "evidence": "Maybe remove or reduce the Telegram integration",
+            },
+            "Select screenshots for the X post",
+        ],
+    ) == []
+
+    for operational_text, kind in [
+        ("Decide on multi-agent architecture", "decision"),
+        ("Remove or reduce the Telegram integration", "experiment"),
+        ("Prepare a GitHub-ready version of Mentat", "practice"),
+        ("Test the new release workflow", "experiment"),
+        ("Read the API documentation for the implementation", "learning"),
+        ("Evaluate local model integration paths", "inquiry"),
+    ]:
+        assert ai._normalize_capture_actionable_items(
+            operational_text,
+            [{"action": operational_text, "kind": kind, "evidence": operational_text}],
+        ) == []
+
+    transcript = (
+        "AI: You should read The Writing Life.\n"
+        "You: That is interesting, but I have not chosen my next book."
+    )
+    assert ai._normalize_capture_actionable_items(
+        transcript,
+        [
+            {
+                "action": "Read The Writing Life",
+                "kind": "learning",
+                "evidence": "You should read The Writing Life",
+            }
+        ],
+    ) == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "content"),
+    [
+        ("learning", "I want to read The Writing Life."),
+        ("inquiry", "I want to examine how surveillance safeguards work."),
+        ("practice", "I want to practice applying first-principles analysis."),
+        ("practice", "Apply first-principles thinking to persuasive arguments."),
+        ("experiment", "I want to experiment with audiobooks for a month."),
+        ("decision", "I need to decide whether to edit and publish the stories."),
+    ],
+)
+def test_capture_actionable_item_validation_accepts_each_kind(kind, content):
+    item = {
+        "action": content.removeprefix("I want to ").removeprefix("I need to ").rstrip("."),
+        "kind": kind,
+        "evidence": content.rstrip("."),
+    }
+
+    assert ai._normalize_capture_actionable_items(content, [item]) == [item]
+
+
 def test_process_content_with_ai_saves_and_exports(monkeypatch):
     analysis = {
         "type": "idea",

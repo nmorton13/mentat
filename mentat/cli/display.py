@@ -687,13 +687,11 @@ def format_todo_with_status(todo, display_number):
     return f"{display_number}. {formatted_line}"
 
 def format_todo_metadata(todo):
-    """Format todo metadata (priority, timestamp, etc.)"""
+    """Format todo kind, project, and lifecycle metadata."""
     metadata_parts = []
-    
-    # Priority
-    if todo.get('priority') and todo['priority'] != 'medium':
-        priority_color = 'bright_red' if todo['priority'] == 'high' else 'bright_blue'
-        metadata_parts.append(f"[{priority_color}]Priority: {todo['priority']}[/{priority_color}]")
+
+    if todo.get('kind'):
+        metadata_parts.append(f"[bright_blue]{todo['kind'].title()}[/bright_blue]")
     
     # Project
     if todo.get('project'):

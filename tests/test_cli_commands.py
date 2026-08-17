@@ -347,6 +347,8 @@ def test_main_todo_json_includes_persisted_todo_id(monkeypatch, capsys):
             "action": "Write tests",
             "status": "pending",
             "priority": "high",
+            "kind": "learning",
+            "evidence": "I want to write tests",
             "project": "Mentat",
             "source_content": "source",
         }
@@ -363,6 +365,26 @@ def test_main_todo_json_includes_persisted_todo_id(monkeypatch, capsys):
     assert todo["memory_id"] == 10
     assert todo["item_index"] == 0
     assert todo["display_number"] == 3
+    assert todo["priority"] == "high"
+    assert todo["kind"] == "learning"
+    assert todo["evidence"] == "I want to write tests"
+
+
+def test_todo_metadata_hides_priority_and_shows_kind():
+    from mentat.cli.display import format_todo_metadata
+
+    rendered = format_todo_metadata(
+        {
+            "priority": "high",
+            "kind": "inquiry",
+            "project": "Personal learning",
+            "timestamp": "2026-08-16 12:00:00",
+        }
+    )
+
+    assert "Priority" not in rendered
+    assert "Inquiry" in rendered
+    assert "Personal learning" in rendered
 
 
 def test_main_rejects_unsupported_json_command(monkeypatch, capsys):

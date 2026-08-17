@@ -142,6 +142,52 @@ ENTITY_CATEGORIES = [
     "dates",
 ]
 
+SELECTIVE_ACTIONABLE_KINDS = frozenset({
+    "learning",
+    "inquiry",
+    "practice",
+    "experiment",
+    "decision",
+})
+
+TENTATIVE_INTENTION_PATTERN = re.compile(
+    r"\b(?:maybe|might|could|perhaps|possibly)\b",
+    re.IGNORECASE,
+)
+
+OPERATIONAL_WORK_PATTERN = re.compile(
+    r"\b(?:api documentation|announcement thread|codebase|commit|deployment|deploy|feature|github|implementation|integration(?: paths?)?|migration|pull request|release workflow|screenshots?|test suite)\b",
+    re.IGNORECASE,
+)
+
+KIND_EVIDENCE_PATTERNS = {
+    "learning": re.compile(
+        r"\b(?:read(?:ing)?|learn(?:ing)?|stud(?:y|ying)|master(?:ing)?)\b",
+        re.IGNORECASE,
+    ),
+    "inquiry": re.compile(
+        r"\b(?:examin(?:e|ing)|evaluat(?:e|ing)|investigat(?:e|ing)|explor(?:e|ing)|understand(?:ing)?|question(?:ing)?|why|how|whether)\b|\bwant to know\b",
+        re.IGNORECASE,
+    ),
+    "practice": re.compile(
+        r"\b(?:practic(?:e|ing)|notic(?:e|ing)|cultivat(?:e|ing)|observ(?:e|ing))\b|\b(?:pay attention|reflect on)\b|\bappl(?:y|ying)\s+(?:first-principles|truth-table)",
+        re.IGNORECASE,
+    ),
+    "experiment": re.compile(
+        r"\b(?:experiment(?:ing)?|tr(?:y|ying)|trial)\b|\btest(?:ing)?\s+(?:whether|if|how)\b",
+        re.IGNORECASE,
+    ),
+    "decision": re.compile(
+        r"\bdecid(?:e|ing)\s+(?:whether|if)\b|\b(?:want|need|have)\s+to\s+(?:choose|decide)\b",
+        re.IGNORECASE,
+    ),
+}
+
+TRANSCRIPT_ROLE_PATTERN = re.compile(
+    r"^\s*(you|user|human|ai|assistant):\s*(.*)$",
+    re.IGNORECASE,
+)
+
 
 def _default_entities() -> Dict[str, List[str]]:
     return {category: [] for category in ENTITY_CATEGORIES}
@@ -158,6 +204,79 @@ def _normalize_entities(raw_entities: Any) -> Dict[str, List[str]]:
         if isinstance(values, list):
             entities[category] = [str(value) for value in values if str(value).strip()]
     return entities
+
+
+def _normalize_evidence_text(value: str) -> str:
+    """Normalize insignificant whitespace and case for source-quote validation."""
+    return " ".join(value.split()).casefold()
+
+
+def _actionable_evidence_source(content: str) -> str:
+    """Limit transcript evidence to user-authored turns when roles are labeled."""
+    segments = []
+    current_role = None
+    current_lines = []
+    found_role = False
+
+    def flush_segment() -> None:
+        if current_role in {"you", "user", "human"} and current_lines:
+            segments.append(" ".join(current_lines))
+
+    for line in content.splitlines():
+        role_match = TRANSCRIPT_ROLE_PATTERN.match(line)
+        if role_match:
+            found_role = True
+            flush_segment()
+            current_role = role_match.group(1).lower()
+            current_lines = [role_match.group(2)]
+        elif current_role is not None:
+            current_lines.append(line)
+
+    flush_segment()
+    return "\n".join(segments) if found_role else content
+
+
+def _normalize_capture_actionable_items(content: str, raw_items: Any) -> List[Dict[str, str]]:
+    """Return at most one source-supported, selective carry-forward item."""
+    if not isinstance(raw_items, list):
+        return []
+
+    normalized_content = _normalize_evidence_text(_actionable_evidence_source(content))
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            continue
+
+        action = raw_item.get("action")
+        kind = raw_item.get("kind")
+        evidence = raw_item.get("evidence")
+        if not all(isinstance(value, str) and value.strip() for value in (action, kind, evidence)):
+            continue
+
+        normalized_kind = kind.strip().lower()
+        normalized_evidence = _normalize_evidence_text(evidence)
+        if normalized_kind not in SELECTIVE_ACTIONABLE_KINDS:
+            continue
+        if not normalized_evidence or normalized_evidence not in normalized_content:
+            continue
+        if TENTATIVE_INTENTION_PATTERN.search(evidence):
+            continue
+        if OPERATIONAL_WORK_PATTERN.search(evidence):
+            continue
+        if not KIND_EVIDENCE_PATTERNS[normalized_kind].search(evidence):
+            continue
+
+        item = {
+            "action": action.strip(),
+            "kind": normalized_kind,
+            "evidence": evidence.strip(),
+        }
+        for optional_field in ("context", "project"):
+            value = raw_item.get(optional_field)
+            if isinstance(value, str) and value.strip():
+                item[optional_field] = value.strip()
+        return [item]
+
+    return []
 
 
 def clean_thought(content, model=None, client=None):
@@ -460,19 +579,10 @@ def analyze_capture_content(
                 if result['type'] == 'dump':
                     result['type'] = 'link'
                     result['confidence'] = 0.7  # Moderate confidence for regex detection
-        # Convert actionable_items to proper format if they're just strings
-        if result['actionable_items'] and isinstance(result['actionable_items'][0], str):
-            # Convert simple strings to structured format
-            structured_items = []
-            for item in result['actionable_items']:
-                structured_items.append({
-                    "action": item,
-                    "context": "",
-                    "priority": "medium",
-                    "time_sensitive": False,
-                    "project": ""
-                })
-            result['actionable_items'] = structured_items
+        result['actionable_items'] = _normalize_capture_actionable_items(
+            content,
+            result['actionable_items'],
+        )
         
         # --- URL extraction fallback ---
         # If AI didn't extract URLs, use regex as fallback  

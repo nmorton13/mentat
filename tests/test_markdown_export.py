@@ -72,6 +72,7 @@ def test_markdown_wikilinks_and_action_items(markdown_export_path):
         "actionable_items": [
             {
                 "action": "Review notes",
+                "kind": "inquiry",
                 "priority": "high",
                 "context": "Follow up later"
             }
@@ -92,7 +93,8 @@ def test_markdown_wikilinks_and_action_items(markdown_export_path):
 
     assert "[[Ada-Lovelace]]" in content
     assert "[[Analytical-Engine]]" in content
-    assert "✅ **Action Items:**\n  - Review notes [high]\n  *Context:* Follow up later" in content
+    assert "✅ **Action Items:**\n  - Review notes [Inquiry]\n  *Context:* Follow up later" in content
+    assert "[high]" not in content
 
 
 def test_markdown_ai_response_includes_source_details(markdown_export_path):

@@ -5,7 +5,7 @@ from mentat.core import ai, prompts
 
 
 PROMPT_HASHES = {
-    "capture_analysis": "15f0d69e064ff3f0d45c526b78250715ef10d91332efd0e0037553d0094802c8",
+    "capture_analysis": "4f05b06018ac7517f77bb678d2572b00b79f9d67c986eb449921817db4841460",
     "todo_extraction": "e308e8c4ab05ad037c25075cc41c48f140550fd5a7922608799852ce1d0295df",
     "multi_todo_extraction": "d53e3687c6c52e74065c7567e64b0e6c26b3470c38e8484b6662a0cda80902fe",
     "entity_extraction": "c054c7a7659c16b7cbfc7c8f54c54975a49b7854687af195d52a82be1596396a",
@@ -65,6 +65,21 @@ def test_capture_analysis_prompt_includes_expected_schema_keys_and_hint():
         '"dates"',
     ]:
         assert entity_key in prompt
+
+    for requirement in [
+        "Default to an empty list",
+        "Return no more than one",
+        "learning|inquiry|practice|experiment|decision",
+        "exact contiguous quote",
+        "software implementation steps",
+        "Apply first-principles thinking to persuasive arguments",
+        "Prepare a GitHub-ready version of Mentat",
+        '"kind"',
+        '"evidence"',
+    ]:
+        assert requirement in prompt
+
+    assert '"priority"' not in prompt
 
 
 def test_todo_and_entity_prompts_include_required_schema_keys():

@@ -291,6 +291,8 @@ def todo_json_item(todo):
         "action": todo.get("action"),
         "context": todo.get("context", ""),
         "priority": todo.get("priority", "medium"),
+        "kind": todo.get("kind", ""),
+        "evidence": todo.get("evidence", ""),
         "status": todo.get("status", "pending"),
         "marked_date": todo.get("marked_date", ""),
         "time_sensitive": todo.get("time_sensitive", False),

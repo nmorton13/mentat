@@ -230,10 +230,10 @@ def format_memory_for_markdown(
         for item in actionable_items:
             if isinstance(item, dict):
                 action = item.get('action', str(item))
-                priority = item.get('priority', 'medium')
+                kind = f" [{item['kind'].title()}]" if item.get('kind') else ''
                 project = f" ({item['project']})" if item.get('project') else ''
                 time_icon = '⏰' if item.get('time_sensitive') else ''
-                action_list.append(f"- {action}{project} [{priority}]{time_icon}")
+                action_list.append(f"- {action}{project}{kind}{time_icon}")
                 if item.get('context'):
                     action_list.append(f"*Context:* {item['context']}")
                 if item.get('due_date'):

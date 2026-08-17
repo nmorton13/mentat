@@ -957,7 +957,8 @@ class EnhancedChatSystem:
                 response += f"{analysis['insight']}\n\n"
                 response += "**Your current todos:**\n"
                 for i, todo in enumerate(todos, 1):
-                    response += f"{i}. {todo['action']} (Priority: {todo['priority']})\n"
+                    kind = f" ({todo['kind'].title()})" if todo.get('kind') else ''
+                    response += f"{i}. {todo['action']}{kind}\n"
                 
                 response += "\n💡 Use `/view <number>` to explore the context behind specific todos."
                 
@@ -975,7 +976,7 @@ class EnhancedChatSystem:
                         'id': f"todo_{len(viewable_todos)}",
                         'content': viewable_content,
                         'command_type': 'todo',
-                        'tags': todo.get('tags', []) + [todo['priority']],
+                        'tags': todo.get('tags', []) + ([todo['kind']] if todo.get('kind') else []),
                         'timestamp': todo.get('timestamp', 'Unknown'),
                         'metadata': todo.get('source_content', '')[:100] + '...' if todo.get('source_content') else ''
                     })
@@ -1048,15 +1049,6 @@ class EnhancedChatSystem:
             insight = f"You're currently focused on {active_categories[0]} activities - a clear area of priority right now."
         else:
             insight = "Your todos show a diverse mix of interests and responsibilities."
-        
-        # Priority analysis
-        priorities = [todo['priority'] for todo in todos]
-        priority_dist = {p: priorities.count(p) for p in set(priorities)}
-        
-        if priority_dist.get('high', 0) > 0:
-            insight += f" You have {priority_dist['high']} high-priority items that need immediate attention."
-        elif priority_dist.get('medium', 0) == len(todos):
-            insight += " All items are medium priority - consider which deserve more urgent focus."
         
         pattern_summary = f"Balanced across {len(active_categories)} categories: {', '.join(active_categories)}"
         

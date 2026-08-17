@@ -150,7 +150,7 @@ fields, and never executes attested computations or referenced code. See
 - **Content Classification** - Automatically categorizes as `idea`, `task`, `link`, `reflection`, etc.
 - **Entity Extraction** - Identifies people, organizations, technologies, projects, concepts, locations, dates on every capture
 - **Tag Generation** - Creates relevant tags for discovery
-- **Actionable Items** - Extracts todos and tasks
+- **Selective Actionable Items** - Carries forward at most one clearly intended learning, inquiry, practice, experiment, or durable decision. Routine project steps and assistant suggestions are not added.
 - **Web Enrichment** (optional, with `-w`) - First extracts entities, then uses OpenRouter web search to gather context for selected entities that are novel or stale in your memory. This is especially useful for current, niche, ambiguous, or model-unknown terms. The web context is used to improve tagging/classification; the original note is still what gets captured.
 - **Plain URL Capture** - URLs stay in the captured note; use `/link` when you want a dedicated link memory
 

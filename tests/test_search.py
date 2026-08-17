@@ -147,6 +147,32 @@ def test_hybrid_search_returns_keyword_result(tmp_path):
     assert results[0]["content"] == "Hybrid keyword match"
 
 
+def test_structured_todo_response_does_not_surface_priority():
+    from mentat.chat.enhanced_chat import EnhancedChatSystem
+
+    class TodoDB:
+        def get_user_todos(self, user_id):
+            assert user_id == "u1"
+            return [
+                {
+                    "action": "Read The Writing Life",
+                    "kind": "learning",
+                    "priority": "high",
+                    "source_content": "I want to read The Writing Life",
+                    "context": "Think about writing as a practice",
+                    "tags": ["writing"],
+                    "timestamp": "2026-08-16",
+                }
+            ]
+
+    chat = EnhancedChatSystem(TodoDB(), openrouter_client=None)
+    result = chat._generate_structured_todo_response("u1")
+
+    assert "Priority:" not in result["response"]
+    assert "Learning" in result["response"]
+    assert result["viewable_items"][0]["tags"] == ["writing", "learning"]
+
+
 def test_hybrid_search_reuses_keyword_records_and_deduplicates_by_id():
     from mentat.chat.enhanced_chat import EnhancedChatSystem
 

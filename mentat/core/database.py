@@ -1174,6 +1174,8 @@ class MemoryDatabase:
                                     'memory_id': memory_id,
                                     'item_index': item_index,
                                     'action': item.get('action', str(item)),
+                                    'kind': item.get('kind', ''),
+                                    'evidence': item.get('evidence', ''),
                                     'context': item.get('context', ''),
                                     'priority': item.get('priority', 'medium'),
                                     'status': item.get('status', 'pending'),  # Default to pending for existing todos
@@ -1208,6 +1210,8 @@ class MemoryDatabase:
                                     'memory_id': memory_id,
                                     'item_index': item_index,
                                     'action': str(item),
+                                    'kind': '',
+                                    'evidence': '',
                                     'context': '',
                                     'priority': 'medium',
                                     'status': 'pending',  # Default status for legacy todos

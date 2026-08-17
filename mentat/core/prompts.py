@@ -25,7 +25,7 @@ _CAPTURE_ANALYSIS_PROMPT_TEMPLATE = """You are an expert content analyzer for a 
 3. **Content Enhancement** - ONLY fix obvious typos, grammar errors, and formatting issues. Do NOT rephrase, restructure, or change the user's original thoughts, voice, or wording. Preserve the user's exact phrasing and ideas - only correct clear mistakes like misspellings, missing punctuation, or obvious grammatical errors
 4. **Summary** - Create a concise summary if the content is substantial. Clearly distinguish the user's captured perspective from any external author/source. For personal reflections, prefer first person instead of ambiguous phrases like "the author."
 5. **Themes/Tags:** Always extract 3-7 relevant keywords or topics from the content, summary, and comment. These should be single words or short phrases that capture the main ideas, technologies, or entities mentioned (e.g., "nostr", "API integration", "documentation", "protocol"). If the content is technical, include technology names, protocols, and standards as tags. Always return a non-empty list of tags/themes, even if there are no hashtags.
-6. **Actionable Items** - Extract any tasks, to-dos, or action items with enhanced detail
+6. **Selective Carry-Forward** - Identify at most one durable learning, inquiry, practice, experiment, or decision the user clearly intends to revisit
 7. **Entities** - Extract concrete names and concepts that could help connect this memory to future memories
 8. **Confidence** - How confident you are in your classification (0.0-1.0)
 
@@ -71,13 +71,36 @@ Look for these patterns and classify as 'task':
 - "Finish..." or "Complete..." or "Wrap up..."
 - "Start..." or "Begin..." or "Initiate..."
 
-**Actionable Items Enhancement:**
-For each actionable item, extract:
-- The specific action needed
-- Any context or reason
-- Priority level (high/medium/low) if mentioned
-- Time sensitivity if mentioned
-- Related project or context
+**Selective Actionable Item Rules:**
+- Default to an empty list. Most captures should not create an actionable item.
+- Return no more than one item: the single strongest durable intention in the capture.
+- The kind must be exactly one of: learning|inquiry|practice|experiment|decision.
+- The item must reflect the user's own clear intention and remain meaningful beyond the current conversation.
+- Include `evidence` as an exact contiguous quote from the user's input that proves the intention. Never quote or promote an assistant suggestion.
+- Use `learning` for a book, subject, or skill the user clearly wants to study.
+- Use `inquiry` for a meaningful unresolved question the user clearly wants to investigate.
+- Use `practice` for a recurring behavior or way of noticing the user clearly wants to cultivate.
+- Use `experiment` for a bounded trial the user clearly wants to conduct.
+- Use `decision` only for a durable personal choice the user explicitly wants to revisit, not a routine project choice.
+- Evidence containing tentative language such as "maybe", "might", "could", "perhaps", or "possibly" is not a commitment and must produce an empty list.
+- Do not create items from software implementation steps, release or publishing checklists, ordinary errands, scheduling, purchases, communications, generic improvement or polish, hypothetical possibilities, unchosen options, or assistant-generated next steps.
+- Do not infer urgency, priority, deadlines, or dependencies.
+
+Examples that should create one item:
+- "Read Annie Dillard's book The Writing Life" -> learning
+- "Experiment with audiobooks" -> experiment
+- "Evaluate whether Flock Safety technology measurably prevents harm" -> inquiry
+- "Examine safeguards such as audit logs, retention limits, warrants, sharing rules, and misuse penalties" -> inquiry
+- "Apply first-principles thinking to persuasive arguments" -> practice
+- "Decide whether to proceed with editing and publishing the family stories" -> decision
+
+Examples that must return an empty list:
+- "Prepare a GitHub-ready version of Mentat"
+- "Add remaining features and polish the codebase"
+- "Select screenshots for the X post"
+- "Draft the announcement thread on X"
+- "Remove or reduce the Telegram integration"
+- "Decide on multi-agent architecture"
 
 **URL Detection Rules:**
 - If content contains a URL and seems to be about sharing/finding that link, classify as 'link'
@@ -106,11 +129,11 @@ Respond in this exact JSON format:
     "themes": ["theme1", "theme2", "theme3"],
     "actionable_items": [
         {
-            "action": "specific action to take",
-            "context": "why or for what purpose",
-            "priority": "high|medium|low",
-            "time_sensitive": true|false,
-            "project": "related project if any"
+            "action": "specific learning, inquiry, practice, experiment, or decision to revisit",
+            "kind": "learning|inquiry|practice|experiment|decision",
+            "context": "why this is worth carrying forward",
+            "evidence": "exact contiguous quote from the user's input",
+            "project": "related project or life area if explicitly present"
         }
     ],
     "entities": {
