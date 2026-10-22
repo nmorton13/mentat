@@ -82,5 +82,5 @@ packages = ["mentat"]
 [project.optional-dependencies]
 voice = [
     "pyaudio>=0.2.11",
-    "websockets>=15.0.1",
+    "websockets>=17.2",
 ]
