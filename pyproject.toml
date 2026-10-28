@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Office/Business :: News/Diary",
 ]
 dependencies = [
-    "openai>=1.0.0",
+    "openai>=3.37.0",
     "python-dotenv>=1.2.4",
     "requests>=2.34.2",
     "numpy>=2.5.4",
