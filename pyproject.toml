@@ -28,7 +28,7 @@ dependencies = [
     "rich>=13.0.0",
     "prompt-toolkit>=3.0.53",
     "PyYAML>=6.0",
-    "sentence-transformers>=2.2.0",
+    "sentence-transformers>=6.2.0",
 ]
 
 [project.scripts]
